@@ -8,6 +8,18 @@
 SystemMonitor::SystemMonitor(QObject *parent)
     : QObject(parent)
 {
+    // Create worker thread
+    m_workerThread = new QThread(this);
+    m_worker = new SystemWorker();
+    m_worker->moveToThread(m_workerThread);
+    
+    // Connect signals
+    connect(m_workerThread, &QThread::finished, m_worker, &QObject::deleteLater);
+    connect(m_worker, &SystemWorker::statsReady, this, &SystemMonitor::onStatsUpdated);
+    
+    m_workerThread->start();
+    
+    // Timer triggers worker updates
     m_timer = new QTimer(this);
     connect(m_timer, &QTimer::timeout, this, &SystemMonitor::updateStats);
     m_timer->start(1000); // Update every second
@@ -16,16 +28,43 @@ SystemMonitor::SystemMonitor(QObject *parent)
 
 void SystemMonitor::updateStats()
 {
-    updateCpuUsage();
-    updateMemoryUsage();
-    updateDiskUsage();
-    updateNetworkUsage();
+    // Trigger update in worker thread
+    QMetaObject::invokeMethod(m_worker, "doUpdate", Qt::QueuedConnection);
+}
+
+void SystemMonitor::onStatsUpdated(double cpu, double ram, double disk, QString netUp, QString netDown)
+{
+    m_cpuUsage = cpu;
+    m_ramUsage = ram;
+    m_diskUsage = disk;
+    m_networkUp = netUp;
+    m_networkDown = netDown;
     
     emit statsUpdated();
 }
 
-void SystemMonitor::updateCpuUsage()
+// ============ SystemWorker Implementation ============
+
+SystemWorker::SystemWorker(QObject *parent)
+    : QObject(parent)
 {
+}
+
+void SystemWorker::doUpdate()
+{
+    double cpu = updateCpuUsage();
+    double ram = updateMemoryUsage();
+    double disk = updateDiskUsage();
+    QString netUp, netDown;
+    updateNetworkUsage(netUp, netDown);
+    
+    emit statsReady(cpu, ram, disk, netUp, netDown);
+}
+
+double SystemWorker::updateCpuUsage()
+{
+    double cpuUsage = 0.0;
+    
 #ifdef Q_OS_WIN
     // Windows: Use WMIC command
     QProcess process;
@@ -38,8 +77,7 @@ void SystemMonitor::updateCpuUsage()
         bool ok;
         double cpu = lines[1].trimmed().toDouble(&ok);
         if (ok) {
-            m_cpuUsage = cpu;
-            return;
+            return cpu;
         }
     }
 #elif defined(Q_OS_LINUX)
@@ -64,7 +102,7 @@ void SystemMonitor::updateCpuUsage()
                 quint64 idleDelta = idleTime - m_prevIdleTime;
                 
                 if (totalDelta > 0) {
-                    m_cpuUsage = 100.0 * (1.0 - (double)idleDelta / totalDelta);
+                    cpuUsage = 100.0 * (1.0 - (double)idleDelta / totalDelta);
                 }
             }
             
@@ -72,7 +110,7 @@ void SystemMonitor::updateCpuUsage()
             m_prevIdleTime = idleTime;
         }
         file.close();
-        return;
+        return cpuUsage;
     }
 #elif defined(Q_OS_MACOS)
     // macOS: Use top command
@@ -89,20 +127,21 @@ void SystemMonitor::updateCpuUsage()
             QRegularExpression re("(\\d+\\.\\d+)%\\s+user");
             QRegularExpressionMatch match = re.match(line);
             if (match.hasMatch()) {
-                m_cpuUsage = match.captured(1).toDouble();
-                return;
+                return match.captured(1).toDouble();
             }
         }
     }
 #endif
     
-    // Fallback: smooth simulation
-    double target = QRandomGenerator::global()->bounded(10, 90);
-    m_cpuUsage = m_cpuUsage * 0.7 + target * 0.3;
+    // Fallback: simulation
+    cpuUsage = QRandomGenerator::global()->bounded(10, 90);
+    return cpuUsage;
 }
 
-void SystemMonitor::updateMemoryUsage()
+double SystemWorker::updateMemoryUsage()
 {
+    double ramUsage = 0.0;
+    
 #ifdef Q_OS_WIN
     // Windows: Use WMIC
     QProcess process;
@@ -112,13 +151,12 @@ void SystemMonitor::updateMemoryUsage()
     
     QStringList lines = output.split('\n', Qt::SkipEmptyParts);
     if (lines.size() > 1) {
-        QStringList values = lines[1].simplified().split(' ');
-        if (values.size() >= 2) {
-            quint64 free = values[0].toULongLong();
-            quint64 total = values[1].toULongLong();
-            if (total > 0) {
-                m_ramUsage = 100.0 * (1.0 - (double)free / total);
-                return;
+        QStringList parts = lines[1].simplified().split(' ');
+        if (parts.size() >= 2) {
+            quint64 freeMemory = parts[0].toULongLong();
+            quint64 totalMemory = parts[1].toULongLong();
+            if (totalMemory > 0) {
+                return 100.0 * (1.0 - (double)freeMemory / totalMemory);
             }
         }
     }
@@ -139,31 +177,33 @@ void SystemMonitor::updateMemoryUsage()
         }
         
         if (memTotal > 0) {
-            m_ramUsage = 100.0 * (1.0 - (double)memAvailable / memTotal);
+            ramUsage = 100.0 * (1.0 - (double)memAvailable / memTotal);
             file.close();
-            return;
+            return ramUsage;
         }
         file.close();
     }
 #endif
     
     // Fallback
-    double target = QRandomGenerator::global()->bounded(30, 80);
-    m_ramUsage = m_ramUsage * 0.9 + target * 0.1;
+    ramUsage = QRandomGenerator::global()->bounded(30, 80);
+    return ramUsage;
 }
 
-void SystemMonitor::updateDiskUsage()
+double SystemWorker::updateDiskUsage()
 {
+    double diskUsage = 0.0;
     QStorageInfo storage(QStorageInfo::root());
     if (storage.isValid() && storage.isReady()) {
         double total = storage.bytesTotal();
         double free = storage.bytesAvailable();
         double used = total - free;
-        m_diskUsage = (used / total) * 100.0;
+        diskUsage = (used / total) * 100.0;
     }
+    return diskUsage;
 }
 
-void SystemMonitor::updateNetworkUsage()
+void SystemWorker::updateNetworkUsage(QString &netUp, QString &netDown)
 {
     quint64 bytesSent = 0;
     quint64 bytesReceived = 0;
@@ -237,9 +277,9 @@ void SystemMonitor::updateNetworkUsage()
 #endif
 
     // Calculate speed (bytes per second)
-    if (m_prevNetworkBytesReceived > 0 && m_prevNetworkBytesSent > 0) {
-        qint64 uploadSpeed = bytesSent - m_prevNetworkBytesSent;
-        qint64 downloadSpeed = bytesReceived - m_prevNetworkBytesReceived;
+    if (m_prevBytesReceived > 0 && m_prevBytesSent > 0) {
+        qint64 uploadSpeed = bytesSent - m_prevBytesSent;
+        qint64 downloadSpeed = bytesReceived - m_prevBytesReceived;
         
         // Prevent negative values from counter resets
         if (uploadSpeed < 0) uploadSpeed = 0;
@@ -250,18 +290,21 @@ void SystemMonitor::updateNetworkUsage()
         double downKB = downloadSpeed / 1024.0;
         
         if (upKB > 1024) {
-            m_networkUp = QString::number(upKB / 1024.0, 'f', 2) + " MB/s";
+            netUp = QString::number(upKB / 1024.0, 'f', 2) + " MB/s";
         } else {
-            m_networkUp = QString::number(upKB, 'f', 1) + " KB/s";
+            netUp = QString::number(upKB, 'f', 1) + " KB/s";
         }
         
         if (downKB > 1024) {
-            m_networkDown = QString::number(downKB / 1024.0, 'f', 2) + " MB/s";
+            netDown = QString::number(downKB / 1024.0, 'f', 2) + " MB/s";
         } else {
-            m_networkDown = QString::number(downKB, 'f', 1) + " KB/s";
+            netDown = QString::number(downKB, 'f', 1) + " KB/s";
         }
+    } else {
+        netUp = "0 KB/s";
+        netDown = "0 KB/s";
     }
     
-    m_prevNetworkBytesSent = bytesSent;
-    m_prevNetworkBytesReceived = bytesReceived;
+    m_prevBytesSent = bytesSent;
+    m_prevBytesReceived = bytesReceived;
 }

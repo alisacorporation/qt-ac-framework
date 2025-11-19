@@ -12,6 +12,8 @@ qt_add_executable(appqt_slr
     main.cpp
     SystemMonitor.h
     SystemMonitor.cpp
+    DiskAnalyzer.h
+    DiskAnalyzer.cpp
 )
 
 qt_add_qml_module(appqt_slr
@@ -20,6 +22,7 @@ qt_add_qml_module(appqt_slr
         Main.qml
         StatCircle.qml
         Sidebar.qml
+        DiskCleanup.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.

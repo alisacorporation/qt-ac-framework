@@ -42,37 +42,37 @@ Rectangle {
 
         // Nav Items
         Repeater {
-            model: ["DASHBOARD", "LOCAL SYSTEM", "REMOTE SERVER", "SETTINGS"]
+            model: ["DASHBOARD", "LOCAL SYSTEM", "DISK CLEANUP", "REMOTE SERVER", "SETTINGS"]
             
             delegate: Rectangle {
                 width: parent.width
                 height: 42
-                color: hoverHandler.hovered ? "#8B0000" : "transparent"
+                color: mouseArea.containsMouse ? "#8B0000" : "transparent"
                 border.width: 0
                 
                 // Left indicator for active/hover state
                 Rectangle {
                     width: 4
                     height: parent.height
-                    color: "#FF0000"
-                    visible: hoverHandler.hovered
-                }
-
-                Text {
-                    anchors.centerIn: parent
-                    text: modelData
-                    color: hoverHandler.hovered ? "white" : "#888888"
-                    font.weight: Font.Light
-                    font.family: "Segoe UI"
-                    font.pixelSize: 13
-                }
-
-                HoverHandler {
-                    id: hoverHandler
+                    anchors.left: parent.left
+                    color: mouseArea.containsMouse ? "#FF0000" : "transparent"
                 }
                 
-                TapHandler {
-                    onTapped: root.itemClicked(modelData)
+                Text {
+                    text: modelData
+                    color: mouseArea.containsMouse ? "white" : "#888888"
+                    anchors.centerIn: parent
+                    font.pixelSize: 13
+                    font.weight: Font.Light
+                    font.family: "Segoe UI"
+                }
+                
+                MouseArea {
+                    id: mouseArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: root.itemClicked(modelData)
                 }
             }
         }

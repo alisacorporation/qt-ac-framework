@@ -5,6 +5,9 @@
 #include <QTimer>
 #include <QProcess>
 #include <QStorageInfo>
+#include <QThread>
+
+class SystemWorker;
 
 class SystemMonitor : public QObject
 {
@@ -30,24 +33,48 @@ public slots:
 signals:
     void statsUpdated();
 
+private slots:
+    void onStatsUpdated(double cpu, double ram, double disk, QString netUp, QString netDown);
+
 private:
     QTimer *m_timer;
-    double m_cpuUsage = 0;
-    double m_ramUsage = 0;
-    double m_diskUsage = 0;
+    double m_cpuUsage = 0.0;
+    double m_ramUsage = 0.0;
+    double m_diskUsage = 0.0;
     QString m_networkUp = "0 KB/s";
     QString m_networkDown = "0 KB/s";
 
-    // Previous values for calculating deltas
+    QThread *m_workerThread = nullptr;
+    SystemWorker *m_worker = nullptr;
+};
+
+// Worker class for background monitoring
+class SystemWorker : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit SystemWorker(QObject *parent = nullptr);
+
+public slots:
+    void doUpdate();
+
+signals:
+    void statsReady(double cpu, double ram, double disk, QString netUp, QString netDown);
+
+private:
+    // For CPU calculation
     quint64 m_prevTotalTime = 0;
     quint64 m_prevIdleTime = 0;
-    quint64 m_prevNetworkBytesSent = 0;
-    quint64 m_prevNetworkBytesReceived = 0;
 
-    void updateCpuUsage();
-    void updateMemoryUsage();
-    void updateDiskUsage();
-    void updateNetworkUsage();
+    // For network calculation
+    quint64 m_prevBytesSent = 0;
+    quint64 m_prevBytesReceived = 0;
+
+    double updateCpuUsage();
+    double updateMemoryUsage();
+    double updateDiskUsage();
+    void updateNetworkUsage(QString &netUp, QString &netDown);
 };
 
 #endif // SYSTEMMONITOR_H

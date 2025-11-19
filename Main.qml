@@ -26,8 +26,9 @@ Window {
                 // Simple navigation logic
                 if (page === "DASHBOARD") viewStack.currentIndex = 0;
                 else if (page === "LOCAL SYSTEM") viewStack.currentIndex = 0;
-                else if (page === "REMOTE SERVER") viewStack.currentIndex = 1; // Placeholder
-                else if (page === "SETTINGS") viewStack.currentIndex = 2; // Placeholder
+                else if (page === "DISK CLEANUP") viewStack.currentIndex = 1;
+                else if (page === "REMOTE SERVER") viewStack.currentIndex = 2; // Placeholder
+                else if (page === "SETTINGS") viewStack.currentIndex = 3; // Placeholder
             }
         }
 
@@ -134,7 +135,11 @@ Window {
                     }
                 }
 
-                // View 1: Remote Server (Placeholder)
+                // View 1: Disk Cleanup
+                DiskCleanup {
+                }
+
+                // View 2: Remote Server (Placeholder)
                 Item {
                     Text {
                         anchors.centerIn: parent
@@ -144,7 +149,7 @@ Window {
                     }
                 }
 
-                // View 2: Settings (Placeholder)
+                // View 3: Settings (Placeholder)
                  Item {
                     Text {
                         anchors.centerIn: parent
