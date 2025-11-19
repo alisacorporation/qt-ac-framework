@@ -3,7 +3,8 @@
 
 #include <QObject>
 #include <QTimer>
-#include <QRandomGenerator>
+#include <QProcess>
+#include <QStorageInfo>
 
 class SystemMonitor : public QObject
 {
@@ -36,6 +37,15 @@ private:
     double m_diskUsage = 0;
     QString m_networkUp = "0 KB/s";
     QString m_networkDown = "0 KB/s";
+
+    // Previous values for calculating deltas
+    quint64 m_prevTotalTime = 0;
+    quint64 m_prevIdleTime = 0;
+
+    void updateCpuUsage();
+    void updateMemoryUsage();
+    void updateDiskUsage();
+    void updateNetworkUsage();
 };
 
 #endif // SYSTEMMONITOR_H

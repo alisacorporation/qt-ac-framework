@@ -49,11 +49,14 @@
 - [x] **UI Polish**: Borderless "seamless" design for cards and sidebar.
 - [x] **Data Binding**: C++ backend connected to QML.
 - [x] **Prototype**: Running with simulated data.
-- [ ] **Real Data Implementation**: Replace random generators with OS APIs.
+- [x] **Real Data Integration**: 
+  - [x] CPU & RAM (Windows PDH)
+  - [x] Disk (QStorageInfo)
+  - [ ] Network (Simulated)
 - [ ] **Remote Monitoring**: Implementation of SSH/Network data fetching.
 - [ ] **Settings**: Configuration for refresh rates and alerts.
 
 ## 7. Roadmap
-1.  **Real Data Integration**: Implement platform-specific data gathering (Next Priority).
+1.  **Real Data Integration**: Implement real network traffic monitoring (Pending).
 2.  **Remote Module**: Add server list and SSH connection logic.
 3.  **Alert System**: Visual feedback when thresholds are crossed (Red glowing warnings).
