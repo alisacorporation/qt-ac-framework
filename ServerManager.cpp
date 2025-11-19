@@ -285,6 +285,8 @@ RemoteWorker::RemoteWorker(const QString &id, const QString &host, int port,
     , m_username(username)
     , m_password(password)
     , m_connected(false)
+    , m_prevBytesSent(0)
+    , m_prevBytesReceived(0)
 {
 }
 
@@ -320,15 +322,18 @@ void RemoteWorker::fetchStats()
     if (!m_connected) return;
     
     // Fetch all stats in one SSH session for efficiency
-    QString commands = "top -bn1 | grep 'Cpu(s)' ; "
-                      "free -m ; "
-                      "df -h / ; "
-                      "cat /proc/net/dev";
+    // Use full paths and LC_ALL=C to ensure consistent output format
+    QString commands = "LC_ALL=C /usr/bin/top -bn1 | /usr/bin/grep 'Cpu(s)' ; "
+                      "LC_ALL=C /usr/bin/free -m ; "
+                      "LC_ALL=C /usr/bin/df -h / ; "
+                      "/usr/bin/cat /proc/net/dev";
     
     QString output = executeRemoteCommand(commands);
     
-    if (output.isEmpty()) {
-        emit error(m_id, "Failed to fetch stats");
+    qDebug() << "Remote stats output for" << m_id << ":" << output.left(200);
+    
+    if (output.isEmpty() || output.startsWith("Error:")) {
+        qDebug() << "Failed to fetch stats for" << m_id;
         return;
     }
     
@@ -337,6 +342,8 @@ void RemoteWorker::fetchStats()
     double disk = parseDiskUsage(output);
     QString netUp, netDown;
     parseNetworkUsage(output, netUp, netDown);
+    
+    qDebug() << "Parsed stats for" << m_id << "- CPU:" << cpu << "RAM:" << ram << "DISK:" << disk;
     
     emit statsReady(m_id, cpu, ram, disk, netUp, netDown);
 }
@@ -388,11 +395,13 @@ QString RemoteWorker::executeRemoteCommand(const QString &command)
 
 double RemoteWorker::parseCpuUsage(const QString &output)
 {
-    // Parse: %Cpu(s): 12.5 us, 3.2 sy, 0.0 ni, 84.3 id
-    QRegularExpression re("(\\d+\\.\\d+)\\s+id");
+    // Parse: %Cpu(s): 12.5 us, 3.2 sy, 0.0 ni, 84.3 id (or with comma: 12,5)
+    QRegularExpression re("([\\d,\\.]+)\\s+id");
     QRegularExpressionMatch match = re.match(output);
     if (match.hasMatch()) {
-        double idle = match.captured(1).toDouble();
+        QString idleStr = match.captured(1);
+        idleStr.replace(',', '.'); // Handle locale with comma decimal separator
+        double idle = idleStr.toDouble();
         return 100.0 - idle;
     }
     return 0.0;
@@ -436,10 +445,67 @@ double RemoteWorker::parseDiskUsage(const QString &output)
 
 void RemoteWorker::parseNetworkUsage(const QString &output, QString &up, QString &down)
 {
-    // Simple placeholder - would need previous values for speed calculation
-    up = "0 KB/s";
-    down = "0 KB/s";
+    quint64 bytesSent = 0;
+    quint64 bytesReceived = 0;
     
-    // Parse /proc/net/dev for byte counts (implementation similar to local monitoring)
-    // For now, just return placeholder values
+    // Parse /proc/net/dev output
+    QStringList lines = output.split('\n');
+    bool foundHeader = false;
+    
+    for (const QString &line : lines) {
+        // Skip until we find the header
+        if (line.contains("Inter-|") || line.contains("face |")) {
+            foundHeader = true;
+            continue;
+        }
+        
+        if (!foundHeader) continue;
+        
+        // Parse interface lines
+        if (line.contains(':')) {
+            QString interface = line.split(':')[0].trimmed();
+            
+            // Skip loopback
+            if (interface == "lo") continue;
+            
+            QStringList parts = line.split(':')[1].simplified().split(' ');
+            if (parts.size() >= 9) {
+                bytesReceived += parts[0].toULongLong();
+                bytesSent += parts[8].toULongLong();
+            }
+        }
+    }
+    
+    // Calculate speed (bytes per second)
+    // Note: Stats are fetched every 5 seconds, so we need to divide by 5
+    if (m_prevBytesReceived > 0 && m_prevBytesSent > 0) {
+        qint64 uploadSpeed = (bytesSent - m_prevBytesSent) / 5;  // Divide by 5 seconds
+        qint64 downloadSpeed = (bytesReceived - m_prevBytesReceived) / 5;  // Divide by 5 seconds
+        
+        // Prevent negative values from counter resets
+        if (uploadSpeed < 0) uploadSpeed = 0;
+        if (downloadSpeed < 0) downloadSpeed = 0;
+        
+        // Convert to KB/s or MB/s
+        double upKB = uploadSpeed / 1024.0;
+        double downKB = downloadSpeed / 1024.0;
+        
+        if (upKB > 1024) {
+            up = QString::number(upKB / 1024.0, 'f', 2) + " MB/s";
+        } else {
+            up = QString::number(upKB, 'f', 1) + " KB/s";
+        }
+        
+        if (downKB > 1024) {
+            down = QString::number(downKB / 1024.0, 'f', 2) + " MB/s";
+        } else {
+            down = QString::number(downKB, 'f', 1) + " KB/s";
+        }
+    } else {
+        up = "0 KB/s";
+        down = "0 KB/s";
+    }
+    
+    m_prevBytesSent = bytesSent;
+    m_prevBytesReceived = bytesReceived;
 }

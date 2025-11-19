@@ -103,6 +103,8 @@ private:
     QString m_username;
     QString m_password;
     bool m_connected;
+    quint64 m_prevBytesSent;
+    quint64 m_prevBytesReceived;
 
     QString executeRemoteCommand(const QString &command);
     double parseCpuUsage(const QString &output);
