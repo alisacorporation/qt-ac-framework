@@ -56,10 +56,11 @@ Item {
     // Center Text
     Column {
         anchors.centerIn: parent
+        spacing: -2
         Text {
             text: Math.round(root.value) + "%"
             color: "white"
-            font.pixelSize: 32
+            font.pixelSize: Math.max(12, root.width * 0.16)
             font.bold: true
             font.family: "Arial" // Or a tech font if available
             anchors.horizontalCenter: parent.horizontalCenter
@@ -67,7 +68,7 @@ Item {
         Text {
             text: root.label
             color: "#AAAAAA"
-            font.pixelSize: 14
+            font.pixelSize: Math.max(8, root.width * 0.07)
             anchors.horizontalCenter: parent.horizontalCenter
         }
     }
@@ -76,14 +77,14 @@ Item {
     Repeater {
         model: 8
         Rectangle {
-            width: 4
-            height: 10
+            width: Math.max(2, root.width * 0.02)
+            height: Math.max(6, root.width * 0.05)
             color: root.primaryColor
             x: parent.width/2 - width/2
-            y: 5
+            y: Math.max(3, root.width * 0.025)
             transform: Rotation {
                 origin.x: width/2
-                origin.y: parent.height/2 - 5
+                origin.y: parent.height/2 - y
                 angle: index * 45
             }
         }

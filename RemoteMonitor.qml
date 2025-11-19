@@ -180,88 +180,37 @@ Item {
 
                             // Stats gauges
                             Row {
-                                spacing: 30
+                                spacing: 20
                                 anchors.verticalCenter: parent.verticalCenter
 
                                 // CPU
-                                Column {
-                                    spacing: 5
-                                    Rectangle {
-                                        width: 60
-                                        height: 60
-                                        color: "transparent"
-                                        border.color: "#8B0000"
-                                        border.width: 2
-                                        radius: 30
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: Math.round(modelData.cpuUsage) + "%"
-                                            color: "white"
-                                            font.pixelSize: 12
-                                            font.bold: true
-                                        }
-                                    }
-                                    Text {
-                                        text: "CPU"
-                                        color: "#666"
-                                        font.pixelSize: 9
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
+                                StatCircle {
+                                    width: 70
+                                    height: 70
+                                    value: modelData.cpuUsage
+                                    label: "CPU"
+                                    primaryColor: "#8B0000"
+                                    glowColor: "#FF3333"
                                 }
 
                                 // RAM
-                                Column {
-                                    spacing: 5
-                                    Rectangle {
-                                        width: 60
-                                        height: 60
-                                        color: "transparent"
-                                        border.color: "#8B0000"
-                                        border.width: 2
-                                        radius: 30
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: Math.round(modelData.ramUsage) + "%"
-                                            color: "white"
-                                            font.pixelSize: 12
-                                            font.bold: true
-                                        }
-                                    }
-                                    Text {
-                                        text: "RAM"
-                                        color: "#666"
-                                        font.pixelSize: 9
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
+                                StatCircle {
+                                    width: 70
+                                    height: 70
+                                    value: modelData.ramUsage
+                                    label: "RAM"
+                                    primaryColor: "#8B0000"
+                                    glowColor: "#FF3333"
                                 }
 
                                 // Disk
-                                Column {
-                                    spacing: 5
-                                    Rectangle {
-                                        width: 60
-                                        height: 60
-                                        color: "transparent"
-                                        border.color: "#8B0000"
-                                        border.width: 2
-                                        radius: 30
-
-                                        Text {
-                                            anchors.centerIn: parent
-                                            text: Math.round(modelData.diskUsage) + "%"
-                                            color: "white"
-                                            font.pixelSize: 12
-                                            font.bold: true
-                                        }
-                                    }
-                                    Text {
-                                        text: "DISK"
-                                        color: "#666"
-                                        font.pixelSize: 9
-                                        anchors.horizontalCenter: parent.horizontalCenter
-                                    }
+                                StatCircle {
+                                    width: 70
+                                    height: 70
+                                    value: modelData.diskUsage
+                                    label: "DISK"
+                                    primaryColor: "#8B0000"
+                                    glowColor: "#FF3333"
                                 }
 
                                 // Network
