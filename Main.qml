@@ -139,14 +139,8 @@ Window {
                 DiskCleanup {
                 }
 
-                // View 2: Remote Server (Placeholder)
-                Item {
-                    Text {
-                        anchors.centerIn: parent
-                        text: "REMOTE SERVER CONNECTION REQUIRED"
-                        color: "red"
-                        font.pixelSize: 24
-                    }
+                // View 2: Remote Server
+                RemoteMonitor {
                 }
 
                 // View 3: Settings (Placeholder)
