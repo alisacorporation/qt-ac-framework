@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Dialogs
+import QtQml
 import App 1.0
 
 Item {
@@ -125,11 +126,55 @@ Item {
                                     font.family: "Consolas"
                                 }
 
-                                Text {
-                                    text: modelData.connected ? "Connected" : (modelData.lastError || "Disconnected")
-                                    color: modelData.connected ? "#00FF00" : "#FF0000"
-                                    font.pixelSize: 9
-                                    font.family: "Segoe UI"
+                                Row {
+                                    spacing: 5
+                                    width: 190
+                                    
+                                    Text {
+                                        id: statusText
+                                        text: {
+                                            var displayText = modelData.connected ? "Connected" : (modelData.lastError || "Disconnected");
+                                            return displayText;
+                                        }
+                                        color: modelData.connected ? "#00FF00" : "#FF0000"
+                                        font.pixelSize: 9
+                                        font.family: "Segoe UI"
+                                        maximumLineCount: 2
+                                        wrapMode: Text.Wrap
+                                        width: parent.width - (copyButton.visible ? copyButton.width + 5 : 0)
+                                        elide: Text.ElideRight
+                                    }
+
+                                    Button {
+                                        id: copyButton
+                                        visible: !modelData.connected && modelData.lastError && modelData.lastError !== ""
+                                        width: 18
+                                        height: 18
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        
+                                        background: Rectangle {
+                                            color: parent.hovered ? "#444" : "transparent"
+                                            border.color: parent.hovered ? "#FF0000" : "#666"
+                                            border.width: 1
+                                            radius: 3
+                                        }
+                                        
+                                        contentItem: Text {
+                                            text: "📋"
+                                            font.pixelSize: 10
+                                            horizontalAlignment: Text.AlignHCenter
+                                            verticalAlignment: Text.AlignVCenter
+                                        }
+                                        
+                                        onClicked: {
+                                            serverManager.copyToClipboard(modelData.lastError);
+                                            console.log("Error copied to clipboard: " + modelData.lastError);
+                                        }
+                                        
+                                        ToolTip.visible: hovered
+                                        ToolTip.text: "Copy error message"
+                                        ToolTip.delay: 500
+                                    }
                                 }
                             }
 
@@ -246,8 +291,37 @@ Item {
                                 anchors.verticalCenter: parent.verticalCenter
 
                                 Button {
+                                    text: modelData.connected ? "DISCONNECT" : "CONNECT"
+                                    width: 90
+                                    height: 26
+                                    background: Rectangle {
+                                        color: parent.hovered ? (modelData.connected ? "#CC0000" : "#008B00") : (modelData.connected ? "#660000" : "#004400")
+                                        border.color: parent.hovered ? (modelData.connected ? "#FF0000" : "#00FF00") : (modelData.connected ? "#8B0000" : "#008B00")
+                                        border.width: 1
+                                        radius: 0
+                                    }
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: "white"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.pixelSize: 9
+                                        font.weight: Font.Light
+                                        font.letterSpacing: 1
+                                        font.family: "Segoe UI"
+                                    }
+                                    onClicked: {
+                                        if (modelData.connected) {
+                                            serverManager.disconnectFromServer(modelData.id)
+                                        } else {
+                                            serverManager.connectToServer(modelData.id)
+                                        }
+                                    }
+                                }
+
+                                Button {
                                     text: "REMOVE"
-                                    width: 80
+                                    width: 90
                                     height: 26
                                     background: Rectangle {
                                         color: parent.hovered ? "#CC0000" : "#660000"
@@ -390,6 +464,20 @@ Item {
                     }
                 }
 
+                CheckBox {
+                    id: autoConnectCheck
+                    text: "Auto-connect after adding"
+                    checked: false
+                    contentItem: Text {
+                        text: parent.text
+                        color: "white"
+                        leftPadding: parent.indicator.width + 10
+                        verticalAlignment: Text.AlignVCenter
+                        font.pixelSize: 12
+                        font.family: "Segoe UI"
+                    }
+                }
+
                 Row {
                     spacing: 10
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -417,7 +505,8 @@ Item {
                                 hostField.text,
                                 parseInt(portField.text) || 22,
                                 usernameField.text,
-                                passwordField.text
+                                passwordField.text,
+                                autoConnectCheck.checked
                             )
                             showAddDialog = false
                             nameField.text = ""
@@ -425,6 +514,7 @@ Item {
                             portField.text = "22"
                             usernameField.text = ""
                             passwordField.text = ""
+                            autoConnectCheck.checked = false
                         }
                     }
 

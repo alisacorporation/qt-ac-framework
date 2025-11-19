@@ -7,6 +7,8 @@
 #include <QVariantMap>
 #include <QTimer>
 #include <QThread>
+#include <QClipboard>
+#include <QGuiApplication>
 
 struct ServerInfo {
     QString id;
@@ -37,13 +39,14 @@ public:
 
     QVariantList servers() const { return m_servers; }
 
-    Q_INVOKABLE void addServer(const QString &name, const QString &host, int port, 
-                                const QString &username, const QString &password);
+    Q_INVOKABLE void addServer(const QString &name, const QString &host, int port,
+                                const QString &username, const QString &password, bool autoConnect = false);
     Q_INVOKABLE void removeServer(const QString &id);
     Q_INVOKABLE void connectToServer(const QString &id);
     Q_INVOKABLE void disconnectFromServer(const QString &id);
     Q_INVOKABLE void refreshServer(const QString &id);
     Q_INVOKABLE void refreshAll();
+    Q_INVOKABLE void copyToClipboard(const QString &text);
 
 signals:
     void serversChanged();

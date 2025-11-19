@@ -27,7 +27,7 @@ ServerManager::~ServerManager()
 }
 
 void ServerManager::addServer(const QString &name, const QString &host, int port,
-                              const QString &username, const QString &password)
+                              const QString &username, const QString &password, bool autoConnect)
 {
     ServerInfo server;
     server.id = generateId();
@@ -42,15 +42,18 @@ void ServerManager::addServer(const QString &name, const QString &host, int port
     server.diskUsage = 0.0;
     server.networkUp = "0 KB/s";
     server.networkDown = "0 KB/s";
-    
+    server.lastError = "";
+
     m_serverMap[server.id] = server;
     m_servers.append(serverToVariant(server));
-    
+
     saveServers();
     emit serversChanged();
-    
-    // Auto-connect
-    connectToServer(server.id);
+
+    // Auto-connect only if requested
+    if (autoConnect) {
+        connectToServer(server.id);
+    }
 }
 
 void ServerManager::removeServer(const QString &id)
@@ -89,6 +92,14 @@ void ServerManager::connectToServer(const QString &id)
     connect(worker, &RemoteWorker::connected, this, [this, id]() {
         if (m_serverMap.contains(id)) {
             m_serverMap[id].connected = true;
+            m_serverMap[id].lastError = ""; // Clear any previous errors
+
+            // Update variant list
+            m_servers.clear();
+            for (const ServerInfo &srv : m_serverMap) {
+                m_servers.append(serverToVariant(srv));
+            }
+
             emit serverConnected(id);
             emit serversChanged();
         }
@@ -104,20 +115,27 @@ void ServerManager::connectToServer(const QString &id)
 void ServerManager::disconnectFromServer(const QString &id)
 {
     if (!m_workers.contains(id)) return;
-    
+
     QMetaObject::invokeMethod(m_workers[id], "disconnect", Qt::QueuedConnection);
-    
+
     if (m_threads.contains(id)) {
         m_threads[id]->quit();
         m_threads[id]->wait();
         m_threads[id]->deleteLater();
         m_threads.remove(id);
     }
-    
+
     m_workers.remove(id);
-    
+
     if (m_serverMap.contains(id)) {
         m_serverMap[id].connected = false;
+
+        // Update variant list
+        m_servers.clear();
+        for (const ServerInfo &srv : m_serverMap) {
+            m_servers.append(serverToVariant(srv));
+        }
+
         emit serverDisconnected(id);
         emit serversChanged();
     }
@@ -133,6 +151,17 @@ void ServerManager::refreshAll()
 {
     for (const QString &id : m_workers.keys()) {
         refreshServer(id);
+    }
+}
+
+void ServerManager::copyToClipboard(const QString &text)
+{
+    QClipboard *clipboard = QGuiApplication::clipboard();
+    if (clipboard) {
+        clipboard->setText(text);
+        qDebug() << "Copied to clipboard:" << text;
+    } else {
+        qWarning() << "Failed to access clipboard";
     }
 }
 
@@ -162,10 +191,17 @@ void ServerManager::onRemoteStatsReady(const QString &id, double cpu, double ram
 void ServerManager::onConnectionError(const QString &id, const QString &error)
 {
     if (!m_serverMap.contains(id)) return;
-    
+
+    qDebug() << "Connection error for server" << id << ":" << error;
     m_serverMap[id].lastError = error;
     m_serverMap[id].connected = false;
-    
+
+    // Update variant list
+    m_servers.clear();
+    for (const ServerInfo &srv : m_serverMap) {
+        m_servers.append(serverToVariant(srv));
+    }
+
     emit serverError(id, error);
     emit serversChanged();
 }
@@ -229,6 +265,7 @@ void ServerManager::loadServers()
         server.diskUsage = 0.0;
         server.networkUp = "0 KB/s";
         server.networkDown = "0 KB/s";
+        server.lastError = "";
         
         m_serverMap[server.id] = server;
         m_servers.append(serverToVariant(server));
