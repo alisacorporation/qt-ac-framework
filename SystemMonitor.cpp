@@ -165,11 +165,103 @@ void SystemMonitor::updateDiskUsage()
 
 void SystemMonitor::updateNetworkUsage()
 {
-    // Network monitoring is complex and OS-specific
-    // For now, keep it simulated
-    int up = QRandomGenerator::global()->bounded(0, 5000);
-    int down = QRandomGenerator::global()->bounded(0, 50000);
+    quint64 bytesSent = 0;
+    quint64 bytesReceived = 0;
     
-    m_networkUp = (up > 1000) ? QString::number(up / 1000.0, 'f', 1) + " MB/s" : QString::number(up) + " KB/s";
-    m_networkDown = (down > 1000) ? QString::number(down / 1000.0, 'f', 1) + " MB/s" : QString::number(down) + " KB/s";
+#ifdef Q_OS_WIN
+    // Windows: Use netstat to get interface statistics
+    QProcess process;
+    process.start("netstat", QStringList() << "-e");
+    process.waitForFinished();
+    QString output = process.readAllStandardOutput();
+    
+    QStringList lines = output.split('\n');
+    for (const QString &line : lines) {
+        if (line.contains("Bytes")) {
+            QStringList parts = line.simplified().split(' ');
+            if (parts.size() >= 3) {
+                bytesReceived = parts[1].remove(',').toULongLong();
+                bytesSent = parts[2].remove(',').toULongLong();
+                break;
+            }
+        }
+    }
+#elif defined(Q_OS_LINUX)
+    // Linux: Read /proc/net/dev
+    QFile file("/proc/net/dev");
+    if (file.open(QIODevice::ReadOnly)) {
+        QTextStream in(&file);
+        
+        // Skip header lines
+        in.readLine();
+        in.readLine();
+        
+        while (!in.atEnd()) {
+            QString line = in.readLine();
+            if (line.contains(':')) {
+                QString interface = line.split(':')[0].trimmed();
+                
+                // Skip loopback
+                if (interface == "lo") continue;
+                
+                QStringList parts = line.split(':')[1].simplified().split(' ');
+                if (parts.size() >= 9) {
+                    bytesReceived += parts[0].toULongLong();
+                    bytesSent += parts[8].toULongLong();
+                }
+            }
+        }
+        file.close();
+    }
+#elif defined(Q_OS_MACOS)
+    // macOS: Use netstat -ib
+    QProcess process;
+    process.start("netstat", QStringList() << "-ib");
+    process.waitForFinished();
+    QString output = process.readAllStandardOutput();
+    
+    QStringList lines = output.split('\n');
+    for (int i = 1; i < lines.size(); ++i) {
+        QString line = lines[i];
+        QStringList parts = line.simplified().split(' ');
+        
+        if (parts.size() >= 7) {
+            QString interface = parts[0];
+            // Skip loopback
+            if (interface.startsWith("lo")) continue;
+            
+            bytesReceived += parts[6].toULongLong();
+            bytesSent += parts[9].toULongLong();
+        }
+    }
+#endif
+
+    // Calculate speed (bytes per second)
+    if (m_prevNetworkBytesReceived > 0 && m_prevNetworkBytesSent > 0) {
+        qint64 uploadSpeed = bytesSent - m_prevNetworkBytesSent;
+        qint64 downloadSpeed = bytesReceived - m_prevNetworkBytesReceived;
+        
+        // Prevent negative values from counter resets
+        if (uploadSpeed < 0) uploadSpeed = 0;
+        if (downloadSpeed < 0) downloadSpeed = 0;
+        
+        // Convert to KB/s or MB/s
+        double upKB = uploadSpeed / 1024.0;
+        double downKB = downloadSpeed / 1024.0;
+        
+        if (upKB > 1024) {
+            m_networkUp = QString::number(upKB / 1024.0, 'f', 2) + " MB/s";
+        } else {
+            m_networkUp = QString::number(upKB, 'f', 1) + " KB/s";
+        }
+        
+        if (downKB > 1024) {
+            m_networkDown = QString::number(downKB / 1024.0, 'f', 2) + " MB/s";
+        } else {
+            m_networkDown = QString::number(downKB, 'f', 1) + " KB/s";
+        }
+    }
+    
+    m_prevNetworkBytesSent = bytesSent;
+    m_prevNetworkBytesReceived = bytesReceived;
 }

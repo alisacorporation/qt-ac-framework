@@ -50,13 +50,13 @@
 - [x] **Data Binding**: C++ backend connected to QML.
 - [x] **Prototype**: Running with simulated data.
 - [x] **Real Data Integration**: 
-  - [x] CPU & RAM (Windows PDH)
+  - [x] CPU & RAM (WMIC/proc/top)
   - [x] Disk (QStorageInfo)
-  - [ ] Network (Simulated)
+  - [x] Network I/O (netstat/proc)
 - [ ] **Remote Monitoring**: Implementation of SSH/Network data fetching.
 - [ ] **Settings**: Configuration for refresh rates and alerts.
 
 ## 7. Roadmap
-1.  **Real Data Integration**: Implement real network traffic monitoring (Pending).
-2.  **Remote Module**: Add server list and SSH connection logic.
-3.  **Alert System**: Visual feedback when thresholds are crossed (Red glowing warnings).
+1.  **Remote Module**: Add server list and SSH connection logic (Next Priority).
+2.  **Alert System**: Visual feedback when thresholds are crossed (Red glowing warnings).
+3.  **Enhanced UI**: Add graphs/charts for historical data visualization.

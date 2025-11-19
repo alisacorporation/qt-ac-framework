@@ -41,6 +41,8 @@ private:
     // Previous values for calculating deltas
     quint64 m_prevTotalTime = 0;
     quint64 m_prevIdleTime = 0;
+    quint64 m_prevNetworkBytesSent = 0;
+    quint64 m_prevNetworkBytesReceived = 0;
 
     void updateCpuUsage();
     void updateMemoryUsage();
