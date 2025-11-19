@@ -35,6 +35,11 @@ A futuristic system monitoring dashboard with a sleek dark theme and crimson acc
 - Qt 6.8 or higher
 - CMake 3.16+
 - C++20 compatible compiler
+- **sshpass** (for remote server password authentication)
+  - Arch Linux: `sudo pacman -S sshpass`
+  - Ubuntu/Debian: `sudo apt install sshpass`
+  - Fedora: `sudo dnf install sshpass`
+  - macOS: `brew install hudochenkov/sshpass/sshpass`
 
 ## Build Instructions
 ```bash

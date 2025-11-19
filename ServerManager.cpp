@@ -345,20 +345,42 @@ QString RemoteWorker::executeRemoteCommand(const QString &command)
 {
     QProcess process;
     
-    // Use ssh command (assumes ssh is in PATH and key-based auth is set up)
-    // For password auth, use sshpass (Linux) or plink (Windows)
     QStringList args;
-    args << "-p" << QString::number(m_port)
-         << "-o" << "StrictHostKeyChecking=no"
-         << "-o" << "ConnectTimeout=5"
-         << m_username + "@" + m_host
-         << command;
+    QString program;
     
-    process.start("ssh", args);
+    // Use sshpass for password authentication if password is provided
+    if (!m_password.isEmpty()) {
+        program = "sshpass";
+        args << "-p" << m_password
+             << "ssh"
+             << "-p" << QString::number(m_port)
+             << "-o" << "StrictHostKeyChecking=no"
+             << "-o" << "ConnectTimeout=5"
+             << "-o" << "PreferredAuthentications=password"
+             << "-o" << "PubkeyAuthentication=no"
+             << m_username + "@" + m_host
+             << command;
+    } else {
+        // Use SSH key-based authentication
+        program = "ssh";
+        args << "-p" << QString::number(m_port)
+             << "-o" << "StrictHostKeyChecking=no"
+             << "-o" << "ConnectTimeout=5"
+             << m_username + "@" + m_host
+             << command;
+    }
+    
+    process.start(program, args);
     process.waitForFinished(10000); // 10 second timeout
     
     if (process.exitCode() != 0) {
-        return "Error: " + process.readAllStandardError();
+        QString errorMsg = process.readAllStandardError();
+        if (program == "sshpass" && errorMsg.isEmpty()) {
+            errorMsg = "Authentication failed. Please check your credentials.";
+        } else if (program == "sshpass" && process.error() == QProcess::FailedToStart) {
+            errorMsg = "sshpass not found. Please install it: sudo apt install sshpass";
+        }
+        return "Error: " + errorMsg;
     }
     
     return process.readAllStandardOutput();
