@@ -17,6 +17,8 @@ class SystemMonitor : public QObject
     Q_PROPERTY(double diskUsage READ diskUsage NOTIFY statsUpdated)
     Q_PROPERTY(QString networkUp READ networkUp NOTIFY statsUpdated)
     Q_PROPERTY(QString networkDown READ networkDown NOTIFY statsUpdated)
+    Q_PROPERTY(double networkTxPercent READ networkTxPercent NOTIFY statsUpdated)
+    Q_PROPERTY(double networkRxPercent READ networkRxPercent NOTIFY statsUpdated)
 
 public:
     explicit SystemMonitor(QObject *parent = nullptr);
@@ -26,6 +28,8 @@ public:
     double diskUsage() const { return m_diskUsage; }
     QString networkUp() const { return m_networkUp; }
     QString networkDown() const { return m_networkDown; }
+    double networkTxPercent() const { return m_networkTxPercent; }
+    double networkRxPercent() const { return m_networkRxPercent; }
 
 public slots:
     void updateStats();
@@ -43,6 +47,8 @@ private:
     double m_diskUsage = 0.0;
     QString m_networkUp = "0 KB/s";
     QString m_networkDown = "0 KB/s";
+    double m_networkTxPercent = 0.0;
+    double m_networkRxPercent = 0.0;
 
     QThread *m_workerThread = nullptr;
     SystemWorker *m_worker = nullptr;

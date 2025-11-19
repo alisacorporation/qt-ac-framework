@@ -18,8 +18,8 @@ Item {
         height: parent.width * 0.9
         radius: width / 2
         color: "#111111" // Filled dark track
-        // border.color: "#333333"
-        // border.width: 2
+        border.color: "#333333"
+        border.width: 1
     }
 
     // Progress Arc

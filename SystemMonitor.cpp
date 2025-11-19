@@ -40,6 +40,29 @@ void SystemMonitor::onStatsUpdated(double cpu, double ram, double disk, QString 
     m_networkUp = netUp;
     m_networkDown = netDown;
     
+    // Calculate network percentages based on speed
+    // Max RX/TX: 1 Gbit/s (~125 MB/s)
+    const double MAX_DOWNLOAD_MBS = 125.0;  // 1 Gbit/s
+    const double MAX_UPLOAD_MBS = 125.0;    // 1 Gbit/s
+    
+    // Parse upload speed
+    double upSpeed = 0.0;
+    if (netUp.contains("MB/s")) {
+        upSpeed = netUp.split(' ')[0].toDouble();
+    } else if (netUp.contains("KB/s")) {
+        upSpeed = netUp.split(' ')[0].toDouble() / 1024.0;
+    }
+    m_networkTxPercent = qMin(100.0, (upSpeed / MAX_UPLOAD_MBS) * 100.0);
+    
+    // Parse download speed
+    double downSpeed = 0.0;
+    if (netDown.contains("MB/s")) {
+        downSpeed = netDown.split(' ')[0].toDouble();
+    } else if (netDown.contains("KB/s")) {
+        downSpeed = netDown.split(' ')[0].toDouble() / 1024.0;
+    }
+    m_networkRxPercent = qMin(100.0, (downSpeed / MAX_DOWNLOAD_MBS) * 100.0);
+    
     emit statsUpdated();
 }
 

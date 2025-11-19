@@ -23,6 +23,7 @@ qt_add_qml_module(appqt_slr
     QML_FILES
         Main.qml
         StatCircle.qml
+        NetworkCircle.qml
         Sidebar.qml
         DiskCleanup.qml
         RemoteMonitor.qml

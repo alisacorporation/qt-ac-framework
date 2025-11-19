@@ -32,6 +32,13 @@ Window {
             }
         }
 
+        // Border separator
+        Rectangle {
+            width: 1
+            height: parent.height
+            color: "#333333"
+        }
+
         // Main Content
         Rectangle {
             width: parent.width - 250
@@ -46,6 +53,15 @@ Window {
                 
                 // View 0: Dashboard / Local System
                 Item {
+                    property string currentTime: new Date().toLocaleTimeString()
+                    
+                    Timer {
+                        interval: 1000
+                        running: true
+                        repeat: true
+                        onTriggered: parent.currentTime = new Date().toLocaleTimeString()
+                    }
+                    
                     // Background Grid Decoration
                     Grid {
                         rows: 20; columns: 20
@@ -59,7 +75,7 @@ Window {
                     }
 
                     Text {
-                        text: "SYSTEM OVERVIEW // " + new Date().toLocaleTimeString()
+                        text: "SYSTEM OVERVIEW // " + parent.currentTime
                         color: "white"
                         font.pixelSize: 16
                         font.weight: Font.Light
@@ -71,7 +87,7 @@ Window {
                     // Stats Grid
                     Grid {
                         x: 40; y: 100
-                        columns: 3
+                        columns: 4
                         spacing: 40
 
                         StatCircle {
@@ -87,6 +103,12 @@ Window {
                         StatCircle {
                             label: "DISK USAGE"
                             value: sysMon.diskUsage
+                        }
+
+                        NetworkCircle {
+                            label: "NETWORK"
+                            rxValue: sysMon.networkRxPercent
+                            txValue: sysMon.networkTxPercent
                         }
                     }
                     
