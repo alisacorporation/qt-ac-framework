@@ -9,6 +9,7 @@
 #include <QThread>
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QTimer>
 
 struct ServerInfo {
     QString id;
@@ -41,6 +42,8 @@ public:
 
     Q_INVOKABLE void addServer(const QString &name, const QString &host, int port,
                                 const QString &username, const QString &password, bool autoConnect = false);
+    Q_INVOKABLE void updateServer(const QString &id, const QString &name, const QString &host, int port,
+                                   const QString &username, const QString &password);
     Q_INVOKABLE void removeServer(const QString &id);
     Q_INVOKABLE void connectToServer(const QString &id);
     Q_INVOKABLE void disconnectFromServer(const QString &id);
@@ -65,7 +68,6 @@ private:
     QMap<QString, ServerInfo> m_serverMap;
     QMap<QString, RemoteWorker*> m_workers;
     QMap<QString, QThread*> m_threads;
-    QTimer *m_refreshTimer;
 
     QString generateId() const;
     QVariantMap serverToVariant(const ServerInfo &server) const;
@@ -105,6 +107,9 @@ private:
     bool m_connected;
     quint64 m_prevBytesSent;
     quint64 m_prevBytesReceived;
+    QTimer *m_statsTimer;
+    
+    bool isLocalhost() const;
 
     QString executeRemoteCommand(const QString &command);
     double parseCpuUsage(const QString &output);

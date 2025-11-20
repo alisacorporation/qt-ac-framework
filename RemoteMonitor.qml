@@ -12,6 +12,13 @@ Item {
     }
 
     property bool showAddDialog: false
+    property bool showEditDialog: false
+    property string editServerId: ""
+    property string editServerName: ""
+    property string editServerHost: ""
+    property int editServerPort: 22
+    property string editServerUsername: ""
+    property string editServerPassword: ""
 
     Column {
         anchors.fill: parent
@@ -19,9 +26,9 @@ Item {
         spacing: 20
 
         // Header
-        Row {
+        Item {
             width: parent.width
-            spacing: 20
+            height: 40
 
             Text {
                 text: "REMOTE SERVER MONITORING"
@@ -30,15 +37,16 @@ Item {
                 font.weight: Font.Light
                 font.family: "Segoe UI"
                 font.letterSpacing: 2
+                anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
             }
-
-            Item { width: parent.width - 600; height: 1 }
 
             Button {
                 text: "+ ADD SERVER"
                 width: 120
                 height: 32
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
                 background: Rectangle {
                     color: parent.hovered ? "#8B0000" : "#660000"
                     border.color: "#FF0000"
@@ -91,153 +99,171 @@ Item {
                             color: "#222222"
                         }
 
-                        Row {
+                        Item {
                             anchors.fill: parent
                             anchors.margins: 20
-                            spacing: 20
 
-                            // Status indicator
-                            Rectangle {
-                                width: 8
-                                height: 8
-                                radius: 4
-                                anchors.verticalCenter: parent.verticalCenter
-                                color: modelData.connected ? "#00FF00" : "#FF0000"
+                            // Background hover effect
+                            MouseArea {
+                                id: mouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                acceptedButtons: Qt.NoButton
+                                propagateComposedEvents: true
+                                z: -1  // Put behind everything
                             }
 
-                            // Server info
-                            Column {
-                                width: 200
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 5
-
-                                Text {
-                                    text: modelData.name
-                                    color: "white"
-                                    font.pixelSize: 14
-                                    font.weight: Font.DemiBold
-                                    font.family: "Segoe UI"
-                                }
-
-                                Text {
-                                    text: modelData.username + "@" + modelData.host + ":" + modelData.port
-                                    color: "#888"
-                                    font.pixelSize: 10
-                                    font.family: "Consolas"
-                                }
-
-                                Row {
-                                    spacing: 5
-                                    width: 190
-                                    
-                                    Text {
-                                        id: statusText
-                                        text: {
-                                            var displayText = modelData.connected ? "Connected" : (modelData.lastError || "Disconnected");
-                                            return displayText;
-                                        }
-                                        color: modelData.connected ? "#00FF00" : "#FF0000"
-                                        font.pixelSize: 9
-                                        font.family: "Segoe UI"
-                                        maximumLineCount: 2
-                                        wrapMode: Text.Wrap
-                                        width: parent.width - (copyButton.visible ? copyButton.width + 5 : 0)
-                                        elide: Text.ElideRight
-                                    }
-
-                                    Button {
-                                        id: copyButton
-                                        visible: !modelData.connected && modelData.lastError && modelData.lastError !== ""
-                                        width: 18
-                                        height: 18
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        
-                                        background: Rectangle {
-                                            color: parent.hovered ? "#444" : "transparent"
-                                            border.color: parent.hovered ? "#FF0000" : "#666"
-                                            border.width: 1
-                                            radius: 3
-                                        }
-                                        
-                                        contentItem: Text {
-                                            text: "📋"
-                                            font.pixelSize: 10
-                                            horizontalAlignment: Text.AlignHCenter
-                                            verticalAlignment: Text.AlignVCenter
-                                        }
-                                        
-                                        onClicked: {
-                                            serverManager.copyToClipboard(modelData.lastError);
-                                            console.log("Error copied to clipboard: " + modelData.lastError);
-                                        }
-                                        
-                                        ToolTip.visible: hovered
-                                        ToolTip.text: "Copy error message"
-                                        ToolTip.delay: 500
-                                    }
-                                }
-                            }
-
-                            // Stats gauges
+                            // Left side content
                             Row {
-                                spacing: 20
+                                id: leftContent
+                                anchors.left: parent.left
                                 anchors.verticalCenter: parent.verticalCenter
+                                spacing: 20
 
-                                // CPU
-                                StatCircle {
-                                    width: 70
-                                    height: 70
-                                    value: modelData.cpuUsage
-                                    label: "CPU"
-                                    primaryColor: "#8B0000"
-                                    glowColor: "#FF3333"
-                                }
-
-                                // RAM
-                                StatCircle {
-                                    width: 70
-                                    height: 70
-                                    value: modelData.ramUsage
-                                    label: "RAM"
-                                    primaryColor: "#8B0000"
-                                    glowColor: "#FF3333"
-                                }
-
-                                // Disk
-                                StatCircle {
-                                    width: 70
-                                    height: 70
-                                    value: modelData.diskUsage
-                                    label: "DISK"
-                                    primaryColor: "#8B0000"
-                                    glowColor: "#FF3333"
-                                }
-
-                                // Network
-                                Column {
-                                    spacing: 5
+                                // Status indicator
+                                Rectangle {
+                                    width: 8
+                                    height: 8
+                                    radius: 4
                                     anchors.verticalCenter: parent.verticalCenter
+                                    color: modelData.connected ? "#00FF00" : "#FF0000"
+                                }
+
+                                // Server info
+                                Column {
+                                    width: 200
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 5
+
                                     Text {
-                                        text: "↑ " + modelData.networkUp
-                                        color: "#00FF00"
+                                        text: modelData.name
+                                        color: "white"
+                                        font.pixelSize: 14
+                                        font.weight: Font.DemiBold
+                                        font.family: "Segoe UI"
+                                    }
+
+                                    Text {
+                                        text: modelData.username + "@" + modelData.host + ":" + modelData.port
+                                        color: "#888"
                                         font.pixelSize: 10
                                         font.family: "Consolas"
                                     }
-                                    Text {
-                                        text: "↓ " + modelData.networkDown
-                                        color: "#00FF00"
-                                        font.pixelSize: 10
-                                        font.family: "Consolas"
+
+                                    Row {
+                                        spacing: 5
+                                        width: 190
+                                        
+                                        Text {
+                                            id: statusText
+                                            text: {
+                                                var displayText = modelData.connected ? "Connected" : (modelData.lastError || "Disconnected");
+                                                return displayText;
+                                            }
+                                            color: modelData.connected ? "#00FF00" : "#FF0000"
+                                            font.pixelSize: 9
+                                            font.family: "Segoe UI"
+                                            maximumLineCount: 2
+                                            wrapMode: Text.Wrap
+                                            width: parent.width - (copyButton.visible ? copyButton.width + 5 : 0)
+                                            elide: Text.ElideRight
+                                        }
+
+                                        Button {
+                                            id: copyButton
+                                            visible: !modelData.connected && modelData.lastError && modelData.lastError !== ""
+                                            width: 18
+                                            height: 18
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            
+                                            background: Rectangle {
+                                                color: parent.hovered ? "#444" : "transparent"
+                                                border.color: parent.hovered ? "#FF0000" : "#666"
+                                                border.width: 1
+                                                radius: 3
+                                            }
+                                            
+                                            contentItem: Text {
+                                                text: "📋"
+                                                font.pixelSize: 10
+                                                horizontalAlignment: Text.AlignHCenter
+                                                verticalAlignment: Text.AlignVCenter
+                                            }
+                                            
+                                            onClicked: {
+                                                serverManager.copyToClipboard(modelData.lastError);
+                                                console.log("Error copied to clipboard: " + modelData.lastError);
+                                            }
+                                            
+                                            ToolTip.visible: hovered
+                                            ToolTip.text: "Copy error message"
+                                            ToolTip.delay: 500
+                                        }
+                                    }
+                                }
+
+                                // Stats gauges
+                                Row {
+                                    spacing: 20
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    // CPU
+                                    StatCircle {
+                                        width: 70
+                                        height: 70
+                                        value: modelData.cpuUsage
+                                        label: "CPU"
+                                        primaryColor: "#8B0000"
+                                        glowColor: "#FF3333"
+                                    }
+
+                                    // RAM
+                                    StatCircle {
+                                        width: 70
+                                        height: 70
+                                        value: modelData.ramUsage
+                                        label: "RAM"
+                                        primaryColor: "#8B0000"
+                                        glowColor: "#FF3333"
+                                    }
+
+                                    // Disk
+                                    StatCircle {
+                                        width: 70
+                                        height: 70
+                                        value: modelData.diskUsage
+                                        label: "DISK"
+                                        primaryColor: "#8B0000"
+                                        glowColor: "#FF3333"
+                                    }
+
+                                    // Network
+                                    Column {
+                                        spacing: 5
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        width: 100  // Fixed width to prevent button shifting
+                                        Text {
+                                            text: "↑ " + modelData.networkUp
+                                            color: "#00FF00"
+                                            font.pixelSize: 10
+                                            font.family: "Consolas"
+                                        }
+                                        Text {
+                                            text: "↓ " + modelData.networkDown
+                                            color: "#00FF00"
+                                            font.pixelSize: 10
+                                            font.family: "Consolas"
+                                        }
                                     }
                                 }
                             }
 
-                            Item { width: 1; height: 1 }
-
-                            // Actions
+                            // Actions (anchored to right)
                             Column {
                                 spacing: 5
+                                anchors.right: parent.right
                                 anchors.verticalCenter: parent.verticalCenter
+                                z: 10  // Ensure buttons are above MouseArea
 
                                 Button {
                                     text: modelData.connected ? "DISCONNECT" : "CONNECT"
@@ -269,6 +295,39 @@ Item {
                                 }
 
                                 Button {
+                                    text: "EDIT"
+                                    width: 90
+                                    height: 26
+                                    background: Rectangle {
+                                        color: parent.hovered ? "#666666" : "#333333"
+                                        border.color: parent.hovered ? "#999999" : "#666666"
+                                        border.width: 1
+                                        radius: 0
+                                    }
+                                    contentItem: Text {
+                                        text: parent.text
+                                        color: "white"
+                                        horizontalAlignment: Text.AlignHCenter
+                                        verticalAlignment: Text.AlignVCenter
+                                        font.pixelSize: 9
+                                        font.weight: Font.Light
+                                        font.letterSpacing: 1
+                                        font.family: "Segoe UI"
+                                    }
+                                    onClicked: {
+                                        console.log("EDIT button clicked for server:", modelData.id, modelData.name)
+                                        editServerId = modelData.id
+                                        editServerName = modelData.name
+                                        editServerHost = modelData.host
+                                        editServerPort = modelData.port
+                                        editServerUsername = modelData.username
+                                        editServerPassword = modelData.password || ""  // Store current password or empty string
+                                        showEditDialog = true
+                                        console.log("showEditDialog set to:", showEditDialog)
+                                    }
+                                }
+
+                                Button {
                                     text: "REMOVE"
                                     width: 90
                                     height: 26
@@ -291,13 +350,6 @@ Item {
                                     onClicked: serverManager.removeServer(modelData.id)
                                 }
                             }
-                        }
-
-                        MouseArea {
-                            id: mouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            acceptedButtons: Qt.NoButton
                         }
                     }
                 }
@@ -427,6 +479,8 @@ Item {
                     }
                 }
 
+                Item { height: 10 }  // Extra spacing before buttons
+
                 Row {
                     spacing: 10
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -485,6 +539,170 @@ Item {
                             font.weight: Font.Light
                         }
                         onClicked: showAddDialog = false
+                    }
+                }
+            }
+        }
+    }
+
+    // Edit Server Dialog
+    Rectangle {
+        id: editDialog
+        anchors.fill: parent
+        color: "#000000CC"
+        visible: showEditDialog
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: showEditDialog = false
+        }
+
+        Rectangle {
+            anchors.centerIn: parent
+            width: 400
+            height: 350
+            color: "#0F0F0F"
+            border.color: "#8B0000"
+            border.width: 2
+
+            Column {
+                anchors.fill: parent
+                anchors.margins: 30
+                spacing: 15
+
+                Text {
+                    text: "EDIT REMOTE SERVER"
+                    color: "white"
+                    font.pixelSize: 14
+                    font.weight: Font.Light
+                    font.letterSpacing: 2
+                }
+
+                TextField {
+                    id: editNameField
+                    width: parent.width
+                    placeholderText: "Server Name"
+                    placeholderTextColor: "#666"
+                    text: editServerName
+                    color: "white"
+                    background: Rectangle {
+                        color: "#1a1a1a"
+                        border.color: "#333"
+                        border.width: 1
+                    }
+                }
+
+                TextField {
+                    id: editHostField
+                    width: parent.width
+                    placeholderText: "Host (IP or domain)"
+                    placeholderTextColor: "#666"
+                    text: editServerHost
+                    color: "white"
+                    background: Rectangle {
+                        color: "#1a1a1a"
+                        border.color: "#333"
+                        border.width: 1
+                    }
+                }
+
+                TextField {
+                    id: editPortField
+                    width: parent.width
+                    placeholderText: "Port (default: 22)"
+                    placeholderTextColor: "#666"
+                    text: editServerPort.toString()
+                    color: "white"
+                    background: Rectangle {
+                        color: "#1a1a1a"
+                        border.color: "#333"
+                        border.width: 1
+                    }
+                }
+
+                TextField {
+                    id: editUsernameField
+                    width: parent.width
+                    placeholderText: "Username"
+                    placeholderTextColor: "#666"
+                    text: editServerUsername
+                    color: "white"
+                    background: Rectangle {
+                        color: "#1a1a1a"
+                        border.color: "#333"
+                        border.width: 1
+                    }
+                }
+
+                TextField {
+                    id: editPasswordField
+                    width: parent.width
+                    placeholderText: "Password (leave empty to keep current)"
+                    placeholderTextColor: "#666"
+                    text: ""  // Always start empty for security
+                    echoMode: TextInput.Password
+                    color: "white"
+                    background: Rectangle {
+                        color: "#1a1a1a"
+                        border.color: "#333"
+                        border.width: 1
+                    }
+                }
+
+                Item { height: 10 }  // Extra spacing before buttons
+
+                Row {
+                    spacing: 10
+                    anchors.horizontalCenter: parent.horizontalCenter
+
+                    Button {
+                        text: "SAVE"
+                        width: 100
+                        height: 32
+                        background: Rectangle {
+                            color: parent.hovered ? "#8B0000" : "#660000"
+                            border.color: "#FF0000"
+                            border.width: 1
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            font.pixelSize: 10
+                            font.weight: Font.Light
+                        }
+                        onClicked: {
+                            serverManager.updateServer(
+                                editServerId,
+                                editNameField.text,
+                                editHostField.text,
+                                parseInt(editPortField.text) || 22,
+                                editUsernameField.text,
+                                editPasswordField.text || editServerPassword  // Use current if empty
+                            )
+                            showEditDialog = false
+                        }
+                    }
+
+                    Button {
+                        text: "CANCEL"
+                        width: 100
+                        height: 32
+                        background: Rectangle {
+                            color: parent.hovered ? "#333" : "#1a1a1a"
+                            border.color: "#666"
+                            border.width: 1
+                        }
+                        contentItem: Text {
+                            text: parent.text
+                            color: "white"
+                            horizontalAlignment: Text.AlignHCenter
+                            verticalAlignment: Text.AlignVCenter
+                            font.pixelSize: 10
+                            font.weight: Font.Light
+                        }
+                        onClicked: showEditDialog = false
                     }
                 }
             }

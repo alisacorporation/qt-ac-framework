@@ -9,21 +9,22 @@ ServerManager::ServerManager(QObject *parent)
 {
     loadServers();
     
-    // Auto-refresh every 5 seconds
-    m_refreshTimer = new QTimer(this);
-    connect(m_refreshTimer, &QTimer::timeout, this, &ServerManager::refreshAll);
-    m_refreshTimer->start(5000);
+    // Note: Each RemoteWorker has its own timer for stats updates
+    // No need for a global refresh timer
 }
 
 ServerManager::~ServerManager()
 {
-    // Clean up workers and threads
-    for (auto it = m_workers.begin(); it != m_workers.end(); ++it) {
-        if (m_threads.contains(it.key())) {
-            m_threads[it.key()]->quit();
-            m_threads[it.key()]->wait();
-        }
+    qDebug() << "ServerManager destructor - cleaning up" << m_workers.size() << "workers";
+    
+    // Disconnect all servers properly
+    QStringList serverIds = m_workers.keys();
+    for (const QString &id : serverIds) {
+        qDebug() << "Disconnecting server:" << id;
+        disconnectFromServer(id);
     }
+    
+    qDebug() << "ServerManager cleanup complete";
 }
 
 void ServerManager::addServer(const QString &name, const QString &host, int port,
@@ -53,6 +54,39 @@ void ServerManager::addServer(const QString &name, const QString &host, int port
     // Auto-connect only if requested
     if (autoConnect) {
         connectToServer(server.id);
+    }
+}
+
+void ServerManager::updateServer(const QString &id, const QString &name, const QString &host, int port,
+                                 const QString &username, const QString &password)
+{
+    if (!m_serverMap.contains(id)) return;
+    
+    // Disconnect if currently connected
+    bool wasConnected = m_serverMap[id].connected;
+    if (wasConnected) {
+        disconnectFromServer(id);
+    }
+    
+    // Update server info
+    m_serverMap[id].name = name;
+    m_serverMap[id].host = host;
+    m_serverMap[id].port = port;
+    m_serverMap[id].username = username;
+    m_serverMap[id].password = password;
+    
+    // Rebuild variant list
+    m_servers.clear();
+    for (const ServerInfo &server : m_serverMap) {
+        m_servers.append(serverToVariant(server));
+    }
+    
+    saveServers();
+    emit serversChanged();
+    
+    // Reconnect if it was connected before
+    if (wasConnected) {
+        connectToServer(id);
     }
 }
 
@@ -219,6 +253,7 @@ QVariantMap ServerManager::serverToVariant(const ServerInfo &server) const
     map["host"] = server.host;
     map["port"] = server.port;
     map["username"] = server.username;
+    map["password"] = server.password;  // Include password for edit functionality
     map["connected"] = server.connected;
     map["cpuUsage"] = server.cpuUsage;
     map["ramUsage"] = server.ramUsage;
@@ -287,7 +322,12 @@ RemoteWorker::RemoteWorker(const QString &id, const QString &host, int port,
     , m_connected(false)
     , m_prevBytesSent(0)
     , m_prevBytesReceived(0)
+    , m_statsTimer(nullptr)
 {
+    // Create timer for periodic stats updates
+    m_statsTimer = new QTimer(this);
+    m_statsTimer->setInterval(5000); // 5 seconds
+    QObject::connect(m_statsTimer, &QTimer::timeout, this, &RemoteWorker::fetchStats);
 }
 
 void RemoteWorker::setCredentials(const QString &host, int port, const QString &username, const QString &password)
@@ -300,26 +340,71 @@ void RemoteWorker::setCredentials(const QString &host, int port, const QString &
 
 void RemoteWorker::connect()
 {
+    qDebug() << "RemoteWorker::connect() called for" << m_id << "(" << m_host << ":" << m_port << ")";
+    
+    // Check if this is localhost - if so, skip remote monitoring
+    if (isLocalhost()) {
+        qDebug() << "Skipping remote monitoring for" << m_id << "- detected as localhost";
+        emit error(m_id, "Cannot monitor localhost remotely. Use Dashboard instead.");
+        return;
+    }
+    
+    qDebug() << "Testing SSH connection to" << m_host;
     // Test connection with simple command
     QString output = executeRemoteCommand("echo 'connected'");
+    qDebug() << "Connection test output:" << output.left(100);
+    
     if (output.contains("connected")) {
+        qDebug() << "Connection successful for" << m_id;
         m_connected = true;
         emit connected();
         fetchStats(); // Initial fetch
+        m_statsTimer->start(); // Start periodic updates
+        qDebug() << "Stats timer started for" << m_id;
     } else {
+        qDebug() << "Connection failed for" << m_id;
         emit error(m_id, "Connection failed: " + output);
     }
 }
 
 void RemoteWorker::disconnect()
 {
+    qDebug() << "RemoteWorker::disconnect() called for" << m_id;
     m_connected = false;
+    if (m_statsTimer) {
+        m_statsTimer->stop();
+        qDebug() << "Stats timer stopped for" << m_id;
+    }
+    
+    // Close SSH control socket
+    QString controlPath = QString("/tmp/ssh-control-%1-%2-%3")
+        .arg(m_host)
+        .arg(m_port)
+        .arg(m_username);
+    
+    QProcess closeProcess;
+    QStringList args;
+    args << "-p" << QString::number(m_port)
+         << "-O" << "exit"
+         << "-o" << "ControlPath=" + controlPath
+         << m_username + "@" + m_host;
+    
+    closeProcess.start("ssh", args);
+    closeProcess.waitForFinished(2000);
+    qDebug() << "SSH control socket closed for" << m_id;
+    
     emit disconnected();
+    qDebug() << "Disconnect complete for" << m_id;
 }
 
 void RemoteWorker::fetchStats()
 {
-    if (!m_connected) return;
+    if (!m_connected) {
+        qDebug() << "fetchStats called but not connected for" << m_id;
+        return;
+    }
+    
+    qDebug() << "fetchStats() called for" << m_id << "- fetching...";
     
     // Fetch all stats in one SSH session for efficiency
     // Use full paths and LC_ALL=C to ensure consistent output format
@@ -344,8 +429,10 @@ void RemoteWorker::fetchStats()
     parseNetworkUsage(output, netUp, netDown);
     
     qDebug() << "Parsed stats for" << m_id << "- CPU:" << cpu << "RAM:" << ram << "DISK:" << disk;
+    qDebug() << "Timer active for" << m_id << ":" << (m_statsTimer ? m_statsTimer->isActive() : false);
     
     emit statsReady(m_id, cpu, ram, disk, netUp, netDown);
+    qDebug() << "Stats emitted for" << m_id;
 }
 
 QString RemoteWorker::executeRemoteCommand(const QString &command)
@@ -355,6 +442,12 @@ QString RemoteWorker::executeRemoteCommand(const QString &command)
     QStringList args;
     QString program;
     
+    // Create control path for SSH connection multiplexing
+    QString controlPath = QString("/tmp/ssh-control-%1-%2-%3")
+        .arg(m_host)
+        .arg(m_port)
+        .arg(m_username);
+    
     // Use sshpass for password authentication if password is provided
     if (!m_password.isEmpty()) {
         program = "sshpass";
@@ -362,35 +455,59 @@ QString RemoteWorker::executeRemoteCommand(const QString &command)
              << "ssh"
              << "-p" << QString::number(m_port)
              << "-o" << "StrictHostKeyChecking=no"
-             << "-o" << "ConnectTimeout=5"
+             << "-o" << "ConnectTimeout=10"
+             << "-o" << "ServerAliveInterval=10"
+             << "-o" << "ServerAliveCountMax=3"
+             << "-o" << "ControlMaster=auto"
+             << "-o" << "ControlPath=" + controlPath
+             << "-o" << "ControlPersist=60"
              << "-o" << "PreferredAuthentications=password"
              << "-o" << "PubkeyAuthentication=no"
              << m_username + "@" + m_host
              << command;
     } else {
-        // Use SSH key-based authentication
+        // Use SSH key-based authentication with connection multiplexing
         program = "ssh";
         args << "-p" << QString::number(m_port)
              << "-o" << "StrictHostKeyChecking=no"
-             << "-o" << "ConnectTimeout=5"
+             << "-o" << "ConnectTimeout=10"
+             << "-o" << "ServerAliveInterval=10"
+             << "-o" << "ServerAliveCountMax=3"
+             << "-o" << "ControlMaster=auto"
+             << "-o" << "ControlPath=" + controlPath
+             << "-o" << "ControlPersist=60"
              << m_username + "@" + m_host
              << command;
     }
     
+    qDebug() << "Executing SSH command for" << m_id << ":" << program << args.join(" ").replace(m_password, "***");
+    
     process.start(program, args);
-    process.waitForFinished(10000); // 10 second timeout
+    bool finished = process.waitForFinished(15000); // 15 second timeout
+    
+    if (!finished) {
+        process.kill();
+        qDebug() << "SSH command timed out for" << m_id;
+        return "Error: Connection timed out after 15 seconds";
+    }
     
     if (process.exitCode() != 0) {
         QString errorMsg = process.readAllStandardError();
+        qDebug() << "SSH error for" << m_id << "- Exit code:" << process.exitCode() << "Error:" << errorMsg;
+        
         if (program == "sshpass" && errorMsg.isEmpty()) {
             errorMsg = "Authentication failed. Please check your credentials.";
         } else if (program == "sshpass" && process.error() == QProcess::FailedToStart) {
             errorMsg = "sshpass not found. Please install it: sudo apt install sshpass";
+        } else if (errorMsg.contains("Connection timed out")) {
+            errorMsg = "Connection timed out. Check firewall/network or increase timeout.";
         }
         return "Error: " + errorMsg;
     }
     
-    return process.readAllStandardOutput();
+    QString output = process.readAllStandardOutput();
+    qDebug() << "SSH command successful for" << m_id << "- Output length:" << output.length();
+    return output;
 }
 
 double RemoteWorker::parseCpuUsage(const QString &output)
@@ -478,7 +595,8 @@ void RemoteWorker::parseNetworkUsage(const QString &output, QString &up, QString
     
     // Calculate speed (bytes per second)
     // Note: Stats are fetched every 5 seconds, so we need to divide by 5
-    if (m_prevBytesReceived > 0 && m_prevBytesSent > 0) {
+    if (m_prevBytesReceived > 0 || m_prevBytesSent > 0) {
+        // We have previous values, calculate speed
         qint64 uploadSpeed = (bytesSent - m_prevBytesSent) / 5;  // Divide by 5 seconds
         qint64 downloadSpeed = (bytesReceived - m_prevBytesReceived) / 5;  // Divide by 5 seconds
         
@@ -501,11 +619,51 @@ void RemoteWorker::parseNetworkUsage(const QString &output, QString &up, QString
         } else {
             down = QString::number(downKB, 'f', 1) + " KB/s";
         }
+        
+        qDebug() << "Network for" << m_id << "- Up:" << up << "Down:" << down 
+                 << "(bytes:" << bytesSent << bytesReceived << "prev:" << m_prevBytesSent << m_prevBytesReceived << ")";
     } else {
+        // First fetch, just initialize
         up = "0 KB/s";
         down = "0 KB/s";
+        qDebug() << "Network for" << m_id << "- First fetch, initializing counters";
     }
     
     m_prevBytesSent = bytesSent;
     m_prevBytesReceived = bytesReceived;
+}
+
+bool RemoteWorker::isLocalhost() const
+{
+    // Check common localhost identifiers
+    if (m_host == "localhost" || 
+        m_host == "127.0.0.1" || 
+        m_host == "::1" ||
+        m_host == "0.0.0.0") {
+        return true;
+    }
+    
+    // Check if it's the local machine's hostname
+    QProcess process;
+    process.start("hostname", QStringList());
+    process.waitForFinished(1000);
+    QString localHostname = process.readAllStandardOutput().trimmed();
+    
+    if (m_host == localHostname) {
+        return true;
+    }
+    
+    // Check local IP addresses
+    process.start("hostname", QStringList() << "-I");
+    process.waitForFinished(1000);
+    QString localIPs = process.readAllStandardOutput().trimmed();
+    QStringList ipList = localIPs.split(' ', Qt::SkipEmptyParts);
+    
+    for (const QString &ip : ipList) {
+        if (m_host == ip.trimmed()) {
+            return true;
+        }
+    }
+    
+    return false;
 }
