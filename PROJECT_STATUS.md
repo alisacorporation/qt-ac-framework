@@ -1,4 +1,4 @@
-# Umbrella Corp. System Monitor - Project Documentation
+# Alisa Corporation :: System Monitor - Project Documentation
 
 ## 1. Project Overview
 **Goal**: Create a Qt-based desktop application featuring a futuristic UI/UX inspired by the Umbrella Corporation's aesthetic from the Resident Evil series.
