@@ -317,45 +317,249 @@ Window {
                         }
                     }
                     
-                    // Network Stats
+                    // Network I/O - Compact
                     Rectangle {
                         x: 40
                         y: quickStatsBar.height + 380
-                        width: 680
-                        height: 150
+                        width: 300
+                        height: 120
                         color: "#0F0F0F"
                         border.color: "#333333"
                         border.width: 1
-                        radius: 0
                         
-                        Text {
-                            text: "NETWORK I/O"
-                            color: "#8B0000"
-                            font.bold: true
-                            x: 20; y: 20
-                        }
-                        
-                        Row {
-                            anchors.centerIn: parent
-                            spacing: 100
+                        Column {
+                            anchors.fill: parent
+                            anchors.margins: 15
+                            spacing: 8
                             
-                            Column {
-                                Text { text: "UPLOAD"; color: "#888"; font.pixelSize: 12 }
-                                Text { 
-                                    text: sysMon.networkUp 
-                                    color: "white"
-                                    font.pixelSize: 28
+                            Text {
+                                text: "NETWORK I/O"
+                                color: "#8B0000"
+                                font.bold: true
+                                font.pixelSize: 11
+                                font.letterSpacing: 1
+                            }
+                            
+                            Rectangle { width: parent.width; height: 1; color: "#222" }
+                            
+                            // Upload
+                            Row {
+                                spacing: 6
+                                width: parent.width
+                                
+                                Text {
+                                    text: "↑"
+                                    color: "#FF0000"
+                                    font.pixelSize: 12
                                     font.bold: true
+                                    width: 16
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                
+                                Column {
+                                    spacing: 0
+                                    Text {
+                                        text: "TX"
+                                        color: "#666"
+                                        font.pixelSize: 9
+                                    }
+                                    Text {
+                                        text: sysMon.networkUp
+                                        color: "#FF0000"
+                                        font.pixelSize: 12
+                                        font.weight: Font.Light
+                                    }
                                 }
                             }
                             
-                            Column {
-                                Text { text: "DOWNLOAD"; color: "#888"; font.pixelSize: 12 }
-                                Text { 
-                                    text: sysMon.networkDown 
-                                    color: "white"
-                                    font.pixelSize: 28
+                            Item { height: 2 }
+                            
+                            // Download
+                            Row {
+                                spacing: 6
+                                width: parent.width
+                                
+                                Text {
+                                    text: "↓"
+                                    color: "#00FF00"
+                                    font.pixelSize: 12
                                     font.bold: true
+                                    width: 16
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+                                
+                                Column {
+                                    spacing: 0
+                                    Text {
+                                        text: "RX"
+                                        color: "#666"
+                                        font.pixelSize: 9
+                                    }
+                                    Text {
+                                        text: sysMon.networkDown
+                                        color: "#00FF00"
+                                        font.pixelSize: 12
+                                        font.weight: Font.Light
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // System Info Cards
+                    Grid {
+                        x: 40
+                        y: quickStatsBar.height + 520
+                        columns: 3
+                        spacing: 20
+                        
+                        // Hardware Card
+                        Rectangle {
+                            width: 300
+                            height: 120
+                            color: "#0F0F0F"
+                            border.color: "#333333"
+                            border.width: 1
+                            
+                            Column {
+                                anchors.fill: parent
+                                anchors.margins: 15
+                                spacing: 8
+                                
+                                Text {
+                                    text: "HARDWARE"
+                                    color: "#8B0000"
+                                    font.bold: true
+                                    font.pixelSize: 11
+                                    font.letterSpacing: 1
+                                }
+                                
+                                Rectangle { width: parent.width; height: 1; color: "#222" }
+                                
+                                Row {
+                                    spacing: 10
+                                    Text { text: "CPU:"; color: "#666"; font.pixelSize: 10; width: 60 }
+                                    Text { 
+                                        text: sysMon.cpuModel
+                                        color: "white"
+                                        font.pixelSize: 10
+                                        width: 210
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                                
+                                Row {
+                                    spacing: 10
+                                    Text { text: "Cores:"; color: "#666"; font.pixelSize: 10; width: 60 }
+                                    Text { text: sysMon.cpuCores; color: "white"; font.pixelSize: 10 }
+                                }
+                                
+                                Row {
+                                    spacing: 10
+                                    Text { text: "RAM:"; color: "#666"; font.pixelSize: 10; width: 60 }
+                                    Text { text: sysMon.totalRam; color: "white"; font.pixelSize: 10 }
+                                }
+                            }
+                        }
+                        
+                        // OS Card
+                        Rectangle {
+                            width: 300
+                            height: 120
+                            color: "#0F0F0F"
+                            border.color: "#333333"
+                            border.width: 1
+                            
+                            Column {
+                                anchors.fill: parent
+                                anchors.margins: 15
+                                spacing: 8
+                                
+                                Text {
+                                    text: "OPERATING SYSTEM"
+                                    color: "#8B0000"
+                                    font.bold: true
+                                    font.pixelSize: 11
+                                    font.letterSpacing: 1
+                                }
+                                
+                                Rectangle { width: parent.width; height: 1; color: "#222" }
+                                
+                                Row {
+                                    spacing: 10
+                                    Text { text: "OS:"; color: "#666"; font.pixelSize: 10; width: 60 }
+                                    Text { 
+                                        text: sysMon.osInfo
+                                        color: "white"
+                                        font.pixelSize: 10
+                                        width: 210
+                                        elide: Text.ElideRight
+                                    }
+                                }
+                                
+                                Row {
+                                    spacing: 10
+                                    Text { text: "Kernel:"; color: "#666"; font.pixelSize: 10; width: 60 }
+                                    Text { text: sysMon.kernelVersion; color: "white"; font.pixelSize: 10 }
+                                }
+                                
+                                Row {
+                                    spacing: 10
+                                    Text { text: "Hostname:"; color: "#666"; font.pixelSize: 10; width: 60 }
+                                    Text { text: sysMon.hostname; color: "white"; font.pixelSize: 10 }
+                                }
+                            }
+                        }
+                        
+                        // Storage Card
+                        Rectangle {
+                            width: 300
+                            height: 120
+                            color: "#0F0F0F"
+                            border.color: "#333333"
+                            border.width: 1
+                            
+                            Column {
+                                anchors.fill: parent
+                                anchors.margins: 15
+                                spacing: 8
+                                
+                                Text {
+                                    text: "STORAGE"
+                                    color: "#8B0000"
+                                    font.bold: true
+                                    font.pixelSize: 11
+                                    font.letterSpacing: 1
+                                }
+                                
+                                Rectangle { width: parent.width; height: 1; color: "#222" }
+                                
+                                Row {
+                                    spacing: 10
+                                    Text { text: "Usage:"; color: "#666"; font.pixelSize: 10; width: 60 }
+                                    Text { 
+                                        text: sysMon.diskUsage.toFixed(1) + "%"
+                                        color: sysMon.diskUsage > 85 ? "#FF0000" : "white"
+                                        font.pixelSize: 10
+                                    }
+                                }
+                                
+                                Row {
+                                    spacing: 10
+                                    Text { text: "Status:"; color: "#666"; font.pixelSize: 10; width: 60 }
+                                    Text { 
+                                        text: sysMon.diskUsage > 85 ? "CRITICAL" : "HEALTHY"
+                                        color: sysMon.diskUsage > 85 ? "#FF0000" : "#00FF00"
+                                        font.pixelSize: 10
+                                        font.bold: true
+                                    }
+                                }
+                                
+                                Text {
+                                    text: "Root filesystem (/)"
+                                    color: "#444"
+                                    font.pixelSize: 9
+                                    font.italic: true
                                 }
                             }
                         }

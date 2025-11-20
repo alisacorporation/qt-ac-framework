@@ -22,6 +22,12 @@ class SystemMonitor : public QObject
     Q_PROPERTY(int healthScore READ healthScore NOTIFY statsUpdated)
     Q_PROPERTY(QString uptime READ uptime NOTIFY statsUpdated)
     Q_PROPERTY(int processCount READ processCount NOTIFY statsUpdated)
+    Q_PROPERTY(QString cpuModel READ cpuModel NOTIFY systemInfoUpdated)
+    Q_PROPERTY(int cpuCores READ cpuCores NOTIFY systemInfoUpdated)
+    Q_PROPERTY(QString totalRam READ totalRam NOTIFY systemInfoUpdated)
+    Q_PROPERTY(QString osInfo READ osInfo NOTIFY systemInfoUpdated)
+    Q_PROPERTY(QString kernelVersion READ kernelVersion NOTIFY systemInfoUpdated)
+    Q_PROPERTY(QString hostname READ hostname NOTIFY systemInfoUpdated)
 
 public:
     explicit SystemMonitor(QObject *parent = nullptr);
@@ -36,12 +42,19 @@ public:
     int healthScore() const { return m_healthScore; }
     QString uptime() const { return m_uptime; }
     int processCount() const { return m_processCount; }
+    QString cpuModel() const { return m_cpuModel; }
+    int cpuCores() const { return m_cpuCores; }
+    QString totalRam() const { return m_totalRam; }
+    QString osInfo() const { return m_osInfo; }
+    QString kernelVersion() const { return m_kernelVersion; }
+    QString hostname() const { return m_hostname; }
 
 public slots:
     void updateStats();
 
 signals:
     void statsUpdated();
+    void systemInfoUpdated();
 
 private slots:
     void onStatsUpdated(double cpu, double ram, double disk, QString netUp, QString netDown);
@@ -58,11 +71,18 @@ private:
     int m_healthScore = 100;
     QString m_uptime = "0s";
     int m_processCount = 0;
+    QString m_cpuModel = "Unknown";
+    int m_cpuCores = 0;
+    QString m_totalRam = "0 GB";
+    QString m_osInfo = "Unknown";
+    QString m_kernelVersion = "Unknown";
+    QString m_hostname = "localhost";
 
     QThread *m_workerThread = nullptr;
     SystemWorker *m_worker = nullptr;
     
     int calculateHealthScore() const;
+    void loadSystemInfo();
 };
 
 // Worker class for background monitoring

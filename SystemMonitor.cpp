@@ -24,6 +24,9 @@ SystemMonitor::SystemMonitor(QObject *parent)
     connect(m_timer, &QTimer::timeout, this, &SystemMonitor::updateStats);
     m_timer->start(1000); // Update every second
     updateStats(); // Initial update
+    
+    // Load static system information
+    loadSystemInfo();
 }
 
 void SystemMonitor::updateStats()
@@ -122,6 +125,90 @@ int SystemMonitor::calculateHealthScore() const
     else if (avgNetwork > 60) score -= 8;
     
     return qMax(0, score);
+}
+
+void SystemMonitor::loadSystemInfo()
+{
+    // Get CPU model
+    QFile cpuInfo("/proc/cpuinfo");
+    if (cpuInfo.open(QIODevice::ReadOnly)) {
+        QTextStream stream(&cpuInfo);
+        while (!stream.atEnd()) {
+            QString line = stream.readLine();
+            if (line.contains("model name")) {
+                qDebug() << "Found CPU line:" << line;
+                QStringList parts = line.split(QRegularExpression("[:\\t]"));
+                qDebug() << "Split parts:" << parts;
+                if (parts.size() > 1) {
+                    m_cpuModel = parts[1].trimmed();
+                    qDebug() << "CPU Model set to:" << m_cpuModel;
+                }
+                break;
+            }
+        }
+        cpuInfo.close();
+    }
+    
+    if (m_cpuModel == "Unknown") {
+        qDebug() << "CPU model still unknown, trying alternative method";
+        // Try alternative: just get the first non-empty part after splitting
+        QFile cpuInfo2("/proc/cpuinfo");
+        if (cpuInfo2.open(QIODevice::ReadOnly)) {
+            QString content = cpuInfo2.readAll();
+            QRegularExpression re("model name\\s*[:\\t]\\s*(.+)");
+            QRegularExpressionMatch match = re.match(content);
+            if (match.hasMatch()) {
+                m_cpuModel = match.captured(1).trimmed();
+                qDebug() << "CPU Model (regex):" << m_cpuModel;
+            }
+            cpuInfo2.close();
+        }
+    }
+    
+    // Get CPU cores
+    m_cpuCores = QThread::idealThreadCount();
+    
+    // Get total RAM
+    QFile memInfo("/proc/meminfo");
+    if (memInfo.open(QIODevice::ReadOnly)) {
+        QString content = memInfo.readAll();
+        QRegularExpression re("MemTotal:\\s+(\\d+)");
+        QRegularExpressionMatch match = re.match(content);
+        if (match.hasMatch()) {
+            double totalKB = match.captured(1).toDouble();
+            double totalGB = totalKB / 1024.0 / 1024.0;
+            m_totalRam = QString::number(totalGB, 'f', 1) + " GB";
+        }
+        memInfo.close();
+    }
+    
+    // Get OS info
+    QFile osRelease("/etc/os-release");
+    if (osRelease.open(QIODevice::ReadOnly)) {
+        QTextStream stream(&osRelease);
+        while (!stream.atEnd()) {
+            QString line = stream.readLine();
+            if (line.startsWith("PRETTY_NAME=")) {
+                m_osInfo = line.split("=")[1].remove('"');
+                break;
+            }
+        }
+        osRelease.close();
+    }
+    
+    // Get kernel version
+    QProcess uname;
+    uname.start("uname", QStringList() << "-r");
+    uname.waitForFinished(1000);
+    m_kernelVersion = QString(uname.readAll()).trimmed();
+    
+    // Get hostname
+    QProcess hostnameProc;
+    hostnameProc.start("hostname");
+    hostnameProc.waitForFinished(1000);
+    m_hostname = QString(hostnameProc.readAll()).trimmed();
+    
+    emit systemInfoUpdated();
 }
 
 // ============ SystemWorker Implementation ============
