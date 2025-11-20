@@ -138,6 +138,8 @@ Item {
                 spacing: 20
 
                 Button {
+                    width: 140
+                    height: 40
                     text: diskAnalyzer.isScanning ? "Scanning..." : "Start Scan"
                     enabled: !diskAnalyzer.isScanning
                     background: Rectangle {
@@ -153,6 +155,7 @@ Item {
                         verticalAlignment: Text.AlignVCenter
                         font.family: "Segoe UI"
                         font.weight: Font.Light
+                        font.pixelSize: 13
                     }
                     onClicked: diskAnalyzer.startScan()
                 }

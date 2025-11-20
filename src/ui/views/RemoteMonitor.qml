@@ -404,7 +404,7 @@ Item {
 
             Column {
                 anchors.fill: parent
-                anchors.margins: 30
+                anchors.margins: 20
                 spacing: 15
 
                 Text {
