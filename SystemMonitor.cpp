@@ -40,6 +40,34 @@ void SystemMonitor::onStatsUpdated(double cpu, double ram, double disk, QString 
     m_networkUp = netUp;
     m_networkDown = netDown;
     
+    // Update uptime
+    QFile uptimeFile("/proc/uptime");
+    if (uptimeFile.open(QIODevice::ReadOnly)) {
+        QString content = uptimeFile.readAll();
+        double uptimeSeconds = content.split(' ')[0].toDouble();
+        int days = uptimeSeconds / 86400;
+        int hours = (int(uptimeSeconds) % 86400) / 3600;
+        int mins = (int(uptimeSeconds) % 3600) / 60;
+        
+        if (days > 0) {
+            m_uptime = QString("%1d %2h").arg(days).arg(hours);
+        } else if (hours > 0) {
+            m_uptime = QString("%1h %2m").arg(hours).arg(mins);
+        } else {
+            m_uptime = QString("%1m").arg(mins);
+        }
+        uptimeFile.close();
+    }
+    
+    // Update process count
+    QProcess ps;
+    ps.start("ps", QStringList() << "ax" << "--no-headers");
+    ps.waitForFinished(1000);
+    m_processCount = QString(ps.readAll()).split('\n', Qt::SkipEmptyParts).count();
+    
+    // Calculate health score
+    m_healthScore = calculateHealthScore();
+    
     // Calculate network percentages based on speed
     // Max RX/TX: 1 Gbit/s (~125 MB/s)
     const double MAX_DOWNLOAD_MBS = 125.0;  // 1 Gbit/s
@@ -64,6 +92,36 @@ void SystemMonitor::onStatsUpdated(double cpu, double ram, double disk, QString 
     m_networkRxPercent = qMin(100.0, (downSpeed / MAX_DOWNLOAD_MBS) * 100.0);
     
     emit statsUpdated();
+}
+
+int SystemMonitor::calculateHealthScore() const
+{
+    // Health score algorithm (0-100)
+    // Lower is worse, higher is better
+    
+    int score = 100;
+    
+    // CPU penalty (up to -30 points)
+    if (m_cpuUsage > 90) score -= 30;
+    else if (m_cpuUsage > 75) score -= 20;
+    else if (m_cpuUsage > 50) score -= 10;
+    
+    // RAM penalty (up to -30 points)
+    if (m_ramUsage > 90) score -= 30;
+    else if (m_ramUsage > 75) score -= 20;
+    else if (m_ramUsage > 50) score -= 10;
+    
+    // Disk penalty (up to -25 points)
+    if (m_diskUsage > 95) score -= 25;
+    else if (m_diskUsage > 85) score -= 15;
+    else if (m_diskUsage > 70) score -= 8;
+    
+    // Network penalty (up to -15 points)
+    double avgNetwork = (m_networkTxPercent + m_networkRxPercent) / 2.0;
+    if (avgNetwork > 80) score -= 15;
+    else if (avgNetwork > 60) score -= 8;
+    
+    return qMax(0, score);
 }
 
 // ============ SystemWorker Implementation ============

@@ -5,8 +5,8 @@ Rectangle {
     id: root
     width: 250
     color: "#0F0F0F"
-    // border.color: "#333333" // Removed for seamless look
-    // border.width: 1
+    
+    property string activePage: "DASHBOARD"
 
     signal itemClicked(string page)
 
@@ -37,6 +37,13 @@ Rectangle {
                 font.letterSpacing: 4
             }
         }
+        
+        // Border below logo
+        Rectangle {
+            width: parent.width
+            height: 1
+            color: "#333333"
+        }
 
         Rectangle { height: 20; width: 1; color: "transparent" } // Spacer
 
@@ -47,7 +54,16 @@ Rectangle {
             delegate: Rectangle {
                 width: parent.width
                 height: 42
-                color: mouseArea.containsMouse ? "#8B0000" : "transparent"
+                color: modelData === root.activePage ? "#660000" : 
+                       (mouseArea.containsMouse ? "#8B0000" : "transparent")
+                
+                // Active indicator bar
+                Rectangle {
+                    width: 3
+                    height: parent.height
+                    color: "#FF0000"
+                    visible: modelData === root.activePage
+                }
                 border.width: 0
                 
                 // Left indicator for active/hover state
@@ -63,7 +79,7 @@ Rectangle {
                     color: mouseArea.containsMouse ? "white" : "#888888"
                     anchors.centerIn: parent
                     font.pixelSize: 13
-                    font.weight: Font.Light
+                    font.weight: Font.Medium
                     font.family: "Segoe UI"
                 }
                 

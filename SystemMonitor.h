@@ -19,6 +19,9 @@ class SystemMonitor : public QObject
     Q_PROPERTY(QString networkDown READ networkDown NOTIFY statsUpdated)
     Q_PROPERTY(double networkTxPercent READ networkTxPercent NOTIFY statsUpdated)
     Q_PROPERTY(double networkRxPercent READ networkRxPercent NOTIFY statsUpdated)
+    Q_PROPERTY(int healthScore READ healthScore NOTIFY statsUpdated)
+    Q_PROPERTY(QString uptime READ uptime NOTIFY statsUpdated)
+    Q_PROPERTY(int processCount READ processCount NOTIFY statsUpdated)
 
 public:
     explicit SystemMonitor(QObject *parent = nullptr);
@@ -30,6 +33,9 @@ public:
     QString networkDown() const { return m_networkDown; }
     double networkTxPercent() const { return m_networkTxPercent; }
     double networkRxPercent() const { return m_networkRxPercent; }
+    int healthScore() const { return m_healthScore; }
+    QString uptime() const { return m_uptime; }
+    int processCount() const { return m_processCount; }
 
 public slots:
     void updateStats();
@@ -49,9 +55,14 @@ private:
     QString m_networkDown = "0 KB/s";
     double m_networkTxPercent = 0.0;
     double m_networkRxPercent = 0.0;
+    int m_healthScore = 100;
+    QString m_uptime = "0s";
+    int m_processCount = 0;
 
     QThread *m_workerThread = nullptr;
     SystemWorker *m_worker = nullptr;
+    
+    int calculateHealthScore() const;
 };
 
 // Worker class for background monitoring
