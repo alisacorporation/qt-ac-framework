@@ -8,26 +8,29 @@ find_package(Qt6 REQUIRED COMPONENTS Quick)
 
 qt_standard_project_setup(REQUIRES 6.8)
 
+# Include directories
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
 qt_add_executable(appqt_slr
-    main.cpp
-    SystemMonitor.h
-    SystemMonitor.cpp
-    DiskAnalyzer.h
-    DiskAnalyzer.cpp
-    ServerManager.h
-    ServerManager.cpp
+    src/main.cpp
+    include/SystemMonitor.h
+    src/core/SystemMonitor.cpp
+    include/DiskAnalyzer.h
+    src/core/DiskAnalyzer.cpp
+    include/ServerManager.h
+    src/core/ServerManager.cpp
 )
 
 qt_add_qml_module(appqt_slr
     URI qt_slr
     QML_FILES
-        Main.qml
-        StatCircle.qml
-        NetworkCircle.qml
-        Sidebar.qml
-        DiskCleanup.qml
-        RemoteMonitor.qml
-        SparkLine.qml
+        src/ui/views/Main.qml
+        src/ui/views/DiskCleanup.qml
+        src/ui/views/RemoteMonitor.qml
+        src/ui/components/StatCircle.qml
+        src/ui/components/NetworkCircle.qml
+        src/ui/components/SparkLine.qml
+        src/ui/components/Sidebar.qml
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
