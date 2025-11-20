@@ -1,4 +1,4 @@
-# Alisa Corporation System Monitor
+# Alisa Corporation :: System Monitor
 
 A futuristic system monitoring dashboard with a sleek dark theme and crimson accents, built with Qt 6 for high-performance cross-platform monitoring.
 
