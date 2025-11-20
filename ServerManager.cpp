@@ -188,6 +188,22 @@ void ServerManager::refreshAll()
     }
 }
 
+void ServerManager::pauseAll()
+{
+    qDebug() << "Pausing all remote server stats fetching";
+    for (auto it = m_workers.begin(); it != m_workers.end(); ++it) {
+        QMetaObject::invokeMethod(it.value(), "pauseStats", Qt::QueuedConnection);
+    }
+}
+
+void ServerManager::resumeAll()
+{
+    qDebug() << "Resuming all remote server stats fetching";
+    for (auto it = m_workers.begin(); it != m_workers.end(); ++it) {
+        QMetaObject::invokeMethod(it.value(), "resumeStats", Qt::QueuedConnection);
+    }
+}
+
 void ServerManager::copyToClipboard(const QString &text)
 {
     QClipboard *clipboard = QGuiApplication::clipboard();
@@ -395,6 +411,22 @@ void RemoteWorker::disconnect()
     
     emit disconnected();
     qDebug() << "Disconnect complete for" << m_id;
+}
+
+void RemoteWorker::pauseStats()
+{
+    if (m_statsTimer && m_statsTimer->isActive()) {
+        m_statsTimer->stop();
+        qDebug() << "Stats paused for" << m_id;
+    }
+}
+
+void RemoteWorker::resumeStats()
+{
+    if (m_connected && m_statsTimer && !m_statsTimer->isActive()) {
+        m_statsTimer->start();
+        qDebug() << "Stats resumed for" << m_id;
+    }
 }
 
 void RemoteWorker::fetchStats()

@@ -49,6 +49,8 @@ public:
     Q_INVOKABLE void disconnectFromServer(const QString &id);
     Q_INVOKABLE void refreshServer(const QString &id);
     Q_INVOKABLE void refreshAll();
+    Q_INVOKABLE void pauseAll();
+    Q_INVOKABLE void resumeAll();
     Q_INVOKABLE void copyToClipboard(const QString &text);
 
 signals:
@@ -91,6 +93,8 @@ public slots:
     void connect();
     void disconnect();
     void fetchStats();
+    void pauseStats();
+    void resumeStats();
 
 signals:
     void connected();

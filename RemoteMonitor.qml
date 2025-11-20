@@ -1,11 +1,28 @@
 import QtQuick
 import QtQuick.Controls
-import QtQuick.Dialogs
-import QtQml
+import QtQuick.Layouts
 import App 1.0
 
 Item {
-    id: root
+    id: remoteMonitor
+
+    // Pause stats fetching when not visible to save resources
+    onVisibleChanged: {
+        if (visible) {
+            console.log("Remote Monitor visible - resuming stats")
+            serverManager.resumeAll()
+        } else {
+            console.log("Remote Monitor hidden - pausing stats")
+            serverManager.pauseAll()
+        }
+    }
+
+    // Also resume on component completion if visible
+    Component.onCompleted: {
+        if (visible) {
+            serverManager.resumeAll()
+        }
+    }
 
     ServerManager {
         id: serverManager
